@@ -8,12 +8,12 @@ from passlib.hash import bcrypt
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from database import get_db
 from schemas import UserCreate, UserLogin, UserProfileUpdate, UserOut
-from crud import get_user_by_email, create_user, update_profile
+from crud import get_user_by_email, create_user, update_profile, get_all_users as crud_get_all_users
 from models import User
-
-import crud
 import schemas
-router = APIRouter()
+
+# Router with prefix and tag
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 # OAuth2 scheme to read the token from the Authorization header
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -47,15 +47,13 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     return user
 
 
-# --- Routes ---
-
-
-router = APIRouter(prefix="/auth", tags=["auth"])
-
+# --- Public route: get all users ---
 @router.get("/all", response_model=list[schemas.UserOut])
 def get_all_users(db: Session = Depends(get_db)):
-    return crud.get_all_users(db)
+    return crud_get_all_users(db)
 
+
+# --- Auth routes ---
 @router.post("/register", response_model=UserOut)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user = get_user_by_email(db, user.email)

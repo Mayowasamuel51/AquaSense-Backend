@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from database import Base, engine
 import models
 from auth import router as auth_router
+# from auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 
 # Create tables
