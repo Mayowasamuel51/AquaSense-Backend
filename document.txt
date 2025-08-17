@@ -1,1 +1,9 @@
 http://127.0.0.1:8000/docs
+
+
+
+git push origin backend to push to both 
+
+apimypr5_AquaSenseBackend
+User: apimypr5_mypromosphere
+Database: apimypr5_AquaSenseBackend
