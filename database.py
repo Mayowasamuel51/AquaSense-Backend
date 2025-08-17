@@ -7,7 +7,7 @@ DATABASE_URL = "mysql+pymysql://apimypr5_mypromosphere:mypromosphere@131.153.147
 # DATABASE_URL = "mysql+pymysql://apimypr5_mypromosphere:mypromosphere@db.yourhost.com:3306/fastapi_db"
 # DATABASE_URL = "mysql+pymysql://apimypr5_mypromosphere:mypromosphere@apimypr5_AquaSenseBackend:3306/fastapi_db"
 engine = create_engine(DATABASE_URL)
-# engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# engine = create_engine(DATABASE_URL, )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
