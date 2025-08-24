@@ -1,6 +1,6 @@
 from passlib.hash import bcrypt
 from models import User
-from schemas import UserCreate, UserProfileUpdate
+from app.schemas import UserCreate, UserProfileUpdate
 from sqlalchemy.orm import Session
 
 def get_all_users(db: Session):

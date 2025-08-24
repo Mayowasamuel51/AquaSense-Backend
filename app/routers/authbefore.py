@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from passlib.hash import bcrypt
 
-from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from database import get_db
-from schemas import UserCreate, UserLogin, UserProfileUpdate, UserOut
-from crud import get_user_by_email, create_user, update_profile, get_all_users as crud_get_all_users
-from models import User
-import schemas
+from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.database import get_db
+from app.schemas import UserCreate, UserLogin, UserProfileUpdate, UserOut
+from app.crud import get_user_by_email, create_user, update_profile, get_all_users as crud_get_all_users
+from modelssss import User
+from app import schemas
 
 # Router with prefix and tag
 router = APIRouter(prefix="/auth", tags=["auth"])
