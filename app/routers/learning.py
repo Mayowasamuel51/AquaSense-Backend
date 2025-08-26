@@ -33,14 +33,11 @@ def learning(body: Learning,   user: User = Depends(get_current_user),   db: Ses
     db.add(learning_entry)
     db.commit()
     db.refresh(learning_entry)
-
     return {
         "message": "Learning data saved successfully",
         "id": learning_entry.id,
         # "user": user.id,   #
     }
-
-
 @router.get('/learning', response_model=List[UserLearning])
 def getlearning(db: Session = Depends(get_db)):
     users = db.query(Learn).all()

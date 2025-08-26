@@ -11,6 +11,6 @@ payload = {
 }
 token = jwt.encode(payload, secret, algorithm="HS256")
 print(token)
-
+hello = "dafdafdaf"
 decoded = jwt.decode(token, options={"verify_signature": False})
 print(decoded)
