@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routers import health, auth   # 👈 import your auth router
+from .routers import health, auth  , learning# 👈 import your auth router
 from .database import engine
 from . import models
 
@@ -21,4 +21,5 @@ app.add_middleware(
 
 # routers
 
-app.include_router(auth.router, prefix="/api/v1")   # 👈 no need to add /auth again
+app.include_router(auth.router, prefix="/api/v1")# 👈 no need to add /auth again
+app.include_router(learning.router, prefix="/api/v1")

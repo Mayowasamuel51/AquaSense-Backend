@@ -1,12 +1,9 @@
 SECRET_KEY = "your-secret-key-here"  # change in production
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 120
 DATABASE_URL = "sqlite:///./test.db"
-
-
 from pydantic import BaseModel
 import os
-
 class Settings(BaseModel):
     APP_ENV: str = os.getenv("APP_ENV", "dev")
     DATABASE_URL: str = os.getenv("DATABASE_URL","mysql+pymysql://apimypr5_mypromosphere:mypromosphere@131.153.147.186:3306/apimypr5_AquaSenseBackend")
