@@ -9,7 +9,10 @@ from ..database  import get_db
 from ..models import User , Learn
 from ..dep.security import create_tokens , get_current_user
 
-router = APIRouter(prefix="/learning", tags=["learning"])
+router = APIRouter(
+    prefix="/learning",
+     tags=["learning"],
+    description="Endpoints for managing learning data such as video progress, and answering learning-related questions.")
 
 class Learning(BaseModel):
     email: EmailStr | None = None
