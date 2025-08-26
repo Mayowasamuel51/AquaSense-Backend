@@ -11,8 +11,7 @@ from ..dep.security import create_tokens , get_current_user
 
 router = APIRouter(
     prefix="/learning",
-     tags=["learning"],
-    description="Endpoints for managing learning data such as video progress, and answering learning-related questions.")
+     tags=["learning"],)
 
 class Learning(BaseModel):
     email: EmailStr | None = None
