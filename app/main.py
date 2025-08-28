@@ -11,7 +11,7 @@ from . import models
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",")]
 
 # Make sure DB tables are created (⚠️ careful with serverless DBs — see note below)
-# models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Platform API", version="0.1.0")
 
