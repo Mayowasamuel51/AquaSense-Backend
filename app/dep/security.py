@@ -9,7 +9,7 @@ from ..models import User
 from ..config import settings
 
 security = HTTPBearer()
-
+# python-jose[cryptography]
 # Secret keys (use from settings.py or .env)
 JWT_SECRET = settings.JWT_SECRET
 JWT_REFRESH_SECRET = settings.JWT_REFRESH_SECRET

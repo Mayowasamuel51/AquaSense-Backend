@@ -6,6 +6,5 @@ mangum
 passlib[bcrypt]
 python-jose
 pymysql
-python-jose[cryptography]
 alembic
 PyJWT
