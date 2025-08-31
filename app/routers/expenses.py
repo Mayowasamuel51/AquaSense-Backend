@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -16,30 +18,31 @@ router = APIRouter(
 
 class Income(BaseModel):
     email: EmailStr | None = None
-    income_type :int
-    amountearn : int
-    quantity_sold:int
-    total_fish_cost    :str
-    which_pond :str
-    income_date : str
-    payment_method :str
+    income_type: str
+    amountearn: int
+    quantity_sold: int
+    total_fish_cost: int
+    which_pond: str
+    income_date: datetime  # ✅ parse automatically
+    payment_method: str
 
 @router.post("/")
 def income_function(body:Income,user: User = Depends(get_current_user),   db: Session = Depends(get_db)):
     mainincome = IncomeFarm(
         user_id=user.id,
-        income_date= body.income_date,
-        total_fish_cost= body.total_fish_cost,
-        which_pond= body.which_pond,
+        income_date=body.income_date,
+        total_fish_cost=body.total_fish_cost,
+        which_pond=body.which_pond,
         quantity_sold=body.quantity_sold,
-        amountearn= body.amountearn,
-        income_type=body.income_type
+        amountearn=body.amountearn,
+        income_type=body.income_type,
+        payment_method=body.payment_method  # ✅ added
     )
     db.add(mainincome)
     db.commit()
     db.refresh(mainincome)
     return {
-        "message": "Learning data saved successfully",
+        "message": "Your expenses  data saved successfully",
         "id": mainincome.id,
         # "user": user.id,   #
     }

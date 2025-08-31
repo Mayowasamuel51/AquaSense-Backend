@@ -26,3 +26,5 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")# 👈 no need to add /auth again
 (app.include_router(learning.router, prefix="/api/v1"))
 app.include_router(expenses.router, prefix="/api/v1")
+
+app.run_server(debug=True, port=8050, host='0.0.0.0')
