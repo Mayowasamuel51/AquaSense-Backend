@@ -59,6 +59,23 @@ class Pond (Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 #
+
+class IncomeFarm(Base):
+    __tablename__ = "income"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    income_type = Column(String(520), nullable=False)
+    amountearn = Column(Integer, nullable=False)
+    quantity_sold = Column(Integer, nullable=False)
+    total_fish_cost = Column(Integer, nullable=False)
+    which_pond = Column(String(520), nullable=False)
+    income_date = Column(DateTime, nullable=False)
+    payment_method = Column(String(520), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+
 # class PondInfo (Base):
 #     __tablename__ = "pondsinfo"
 #     id = Column(Integer, primary_key=True, autoincrement=True)
