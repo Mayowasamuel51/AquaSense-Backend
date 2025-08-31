@@ -27,7 +27,7 @@ class Income(BaseModel):
     payment_method: str
 
 @router.post("/")
-def income_function(body:Income,user: User = Depends(get_current_user),   db: Session = Depends(get_db)):
+def expenses(body:Income,user: User = Depends(get_current_user),   db: Session = Depends(get_db)):
     mainincome = IncomeFarm(
         user_id=user.id,
         income_date=body.income_date,

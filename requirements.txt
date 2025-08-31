@@ -1,5 +1,6 @@
 fastapi[all]
 uvicorn
+argon2-cffi
 sqlalchemy
 pydantic[email]
 mangum
