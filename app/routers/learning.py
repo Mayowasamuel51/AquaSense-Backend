@@ -22,7 +22,7 @@ class Learning(BaseModel):
     fourth_question : str
 
 
-@router.post("/learning")
+@router.post("/")
 def learning(body: Learning,   user: User = Depends(get_current_user),   db: Session = Depends(get_db)):
     learning_entry = Learn(
         user_id=user.id,
@@ -40,7 +40,7 @@ def learning(body: Learning,   user: User = Depends(get_current_user),   db: Ses
         "id": learning_entry.id,
         # "user": user.id,   #
     }
-@router.get('/learning', response_model=List[UserLearning])
+@router.get('/', response_model=List[UserLearning])
 def getlearning(db: Session = Depends(get_db)):
     users = db.query(Learn).all()
     return users

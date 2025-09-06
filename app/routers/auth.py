@@ -8,7 +8,8 @@ from ..database  import get_db
 from ..models import User
 from ..schemas import UserOut
 from typing import List
-from ..dep.security import create_tokens
+# from ..dep.security import create_tokens
+from ..dep.security import create_tokens , get_current_user
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 class RegisterIn(BaseModel):
@@ -19,10 +20,15 @@ class RegisterIn(BaseModel):
     phone: str | None = None
     password: str
 
+
+
+
 @router.get("/allusers", response_model=List[UserOut])
 def getUser(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return users
+
+
 
 @router.post("/register")
 def register(body: RegisterIn, db: Session = Depends(get_db)):

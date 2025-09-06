@@ -14,8 +14,10 @@ class User(Base):
     phone_verified = Column(Boolean, default=False)
     gender = Column(String(222), nullable=True)
     email_verified = Column(Boolean, default=False)
+    profilepicture = Column(Boolean , nullable=True)
     password_hash = Column(String(255), nullable=False)
     nin = Column(String(50), nullable=True)
+    location = Column(String(50), nullable=True)
     kyc_status = Column(String(50), default="unverified")
     first_name = Column(String(100))
     last_name = Column(String(100))
@@ -23,6 +25,16 @@ class User(Base):
     roles = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class MyFarm(Base):
+    __tablename__ = "myfarm"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    farm_name = Column(String(520), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
 
 
 class Learn(Base):
