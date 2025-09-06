@@ -52,3 +52,13 @@ class UserLearning(BaseModel):
 
     class Config:
         from_attributes = True  # ✅ replaces orm_mode
+
+
+class ShowmyFarm(BaseModel):
+    id: int
+    user_id: int  # ma
+    farm_name:str
+    # email: Optional[str] = None
+
+    class Config:
+        from_attributes = True  # ✅ replaces orm_mode

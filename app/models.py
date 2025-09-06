@@ -31,11 +31,9 @@ class MyFarm(Base):
     __tablename__ = "myfarm"
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    farm_name = Column(String(520), nullable=False)
+    farm_name = Column(String(520), unique=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
-
-
 
 class Learn(Base):
     __tablename__ = "learns"

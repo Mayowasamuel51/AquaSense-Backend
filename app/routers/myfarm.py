@@ -6,7 +6,7 @@ from passlib.hash import argon2
 from uuid import uuid4
 from ..database  import get_db
 from ..models import User ,     MyFarm
-from ..schemas import UserOut
+from ..schemas import UserOut, ShowmyFarm
 from typing import List
 # from ..dep.security import create_tokens
 from ..dep.security import create_tokens , get_current_user
@@ -17,6 +17,12 @@ router = APIRouter(prefix="/createmyfarm", tags=["createmyfarm"])
 class MyfarmBase(BaseModel):
     email: EmailStr | None = None
     farm_name:str
+
+
+@router.get('/', response_model=List[ShowmyFarm])
+def showmyfarm(user: User = Depends(get_current_user),  db: Session = Depends(get_db)):
+    users = db.query(MyFarm).all()
+    return users
 
 @router.post('/')
 def farm(body:MyfarmBase, user: User = Depends(get_current_user),   db: Session = Depends(get_db)):
