@@ -48,7 +48,11 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
         roles=["user"]
     )
     db.add(u); db.commit(); db.refresh(u)
-    return {"user_id": str(u.id) , "message":"user registered successfully", "data":u}
+    return {
+        "user_id": str(u.id) ,
+        "message":"user registered successfully",
+        "data":u
+    }
 
 class LoginIn(BaseModel):
     email: Optional[EmailStr] = None
