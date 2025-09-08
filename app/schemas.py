@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -15,12 +17,26 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserProfileUpdate(BaseModel):
-    full_name: Optional[str]
-    bio: Optional[str]
-    gender: Optional[str]
-    first_name: Optional[str]
-    last_name: Optional[str]
+    id: int
+    email: EmailStr
+    # full_name:str | None = None
+    bio: str | None = None
+    gender: str | None = None
+    first_name:str | None = None
+    last_name: str | None = None
+    location:str | None = None
+    profilepicture:str | None = None
+
+    class Config:
+        from_attributes = True  # ✅ Pydantic v2 (use orm_mode=True if on v1)
+
+class UserProfileResponse(BaseModel):
+    message: str
+    data: UserProfileUpdate
+
+
 
 class UserOut(UserBase):
     id: int
@@ -58,7 +74,50 @@ class ShowmyFarm(BaseModel):
     id: int
     user_id: int  # ma
     farm_name:str
+    farm_image: Optional[str] = None
     # email: Optional[str] = None
 
     class Config:
         from_attributes = True  # ✅ replaces orm_mode
+
+
+
+
+
+
+
+
+
+
+class PondBase(BaseModel):
+    record_id: int
+    user_id: int
+    user_farm: int
+    pond_name: str
+    pond_type: str
+    pond_capacity: str
+    pond_image_path: str
+
+
+class PondCreate(PondBase):
+    """Schema for creating a new pond"""
+    pass  # inherits everything from PondBase
+
+
+class PondUpdate(BaseModel):
+    """Schema for updating pond details"""
+    pond_name: Optional[str] = None
+    pond_type: Optional[str] = None
+    pond_capacity: Optional[str] = None
+    pond_image_path: Optional[str] = None
+    user_farm: Optional[int] = None
+
+
+class PondOut(PondBase):
+    """Schema for returning pond info"""
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True  # ✅ for SQLAlchemy -> Pydantic conversion

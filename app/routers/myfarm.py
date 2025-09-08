@@ -31,7 +31,8 @@ def farm(body:MyfarmBase, user: User = Depends(get_current_user),   db: Session 
         raise HTTPException(status_code=404, detail="User not found")
     createfarm = MyFarm(
         user_id=user.id,
-        farm_name= body.farm_name
+        farm_name= body.farm_name,
+        farm_type = body.farm_type
     )
     db.add(createfarm)
     db.commit()

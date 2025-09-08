@@ -77,7 +77,9 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
         "id": user.id,
         "email": user.email,
         "access": tokens["access"],
-        "refresh": tokens["refresh"],
+        "data":user,
+        "message":"user is login now",
+        # "refresh": tokens["refresh"],
         "token_type": "bearer"
     }
 

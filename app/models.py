@@ -5,6 +5,13 @@ import uuid
 from datetime import datetime
 import uuid
 from .database import Base
+import random
+
+
+number = int("".join(str(d) for d in random.sample(range(0, 10), 5)))
+def generate_random_number():
+    # Make a random 5-digit number (digits won’t repeat inside the number)
+    return "".join(str(d) for d in random.sample(range(0, 10), 5))
 
 class User(Base):
     __tablename__ = "users"
@@ -13,6 +20,7 @@ class User(Base):
     phone = Column(String(20), unique=True, index=True, nullable=True)
     phone_verified = Column(Boolean, default=False)
     gender = Column(String(222), nullable=True)
+    bio = Column(String(2232), nullable=True)
     email_verified = Column(Boolean, default=False)
     profilepicture = Column(Boolean , nullable=True)
     password_hash = Column(String(255), nullable=False)
@@ -28,10 +36,26 @@ class User(Base):
 
 
 class MyFarm(Base):
-    __tablename__ = "myfarm"
+    __tablename__ = "farm"
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    farm_image = Column(String(520), unique=True, nullable=False)
     farm_name = Column(String(520), unique=True, nullable=False)
+    farm_type= Column(String(520), unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+class Batch(Base):
+    __tablename__ = "batches"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_farm = Column(Integer, ForeignKey("farm.id"), nullable=False)
+    batch_track_number= Column(String(10), unique=True, nullable=False ,  default=generate_random_number )
+    batch_name = Column(String(520), unique=True, nullable=False)
+    batch_capacity= Column(String(2444), nullable=False)
+    batch_option = Column(String(520),  nullable=False)
+    batch_option_2 = Column(String(520), nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
@@ -46,6 +70,21 @@ class Learn(Base):
     third_question = Column(String(52220), nullable=False)
     fourth_question = Column(String(52220), nullable=False)
 
+class Pond (Base):
+    __tablename__ = "ponds"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    record_id = Column(Integer, ForeignKey("units.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_farm= Column(Integer, ForeignKey("farm.id"), nullable=False)
+    batch = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    pond_name= Column(String(520),  unique=True ,nullable=False)
+    pond_track_number = Column(String(10),nullable=False, default=generate_random_number)
+    pond_type = Column(String(520),  nullable=False)
+    pond_capacity = Column(String(520),  nullable=False)
+    pond_image_path  = Column(String(520),  nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+#
 
 class Record(Base):
     __tablename__ = "units"
@@ -55,30 +94,17 @@ class Record(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
-class Pond (Base):
-    __tablename__ = "ponds"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    record_id = Column(Integer, ForeignKey("units.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
-    pond_name= Column(String(520), nullable=False)
-    pond_type = Column(String(520),  nullable=False)
-    pond_capacity = Column(String(520),  nullable=False)
-    pond_image_path  = Column(String(520),  nullable=False)
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
-#
 
 class IncomeFarm(Base):
     __tablename__ = "income"
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    pond_name = Column(Integer, ForeignKey("ponds.id"), nullable=False)
     income_type = Column(String(520), nullable=False)
     amountearn = Column(Integer, nullable=False)
-    quantity_sold = Column(Integer, nullable=False)
-    total_fish_cost = Column(Integer, nullable=False)
-    which_pond = Column(String(520), nullable=False)
+    quantity_sold = Column(Integer, nullable=False)       #we should know auto
+    total_fish_cost = Column(Integer, nullable=False)     #we should know auto
+    which_pond = Column(String(520), nullable=False)      #we should know auto
     income_date = Column(DateTime, nullable=False)
     payment_method = Column(String(520), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -122,9 +148,6 @@ class IncomeFarm(Base):
 #     user = relationship("User", back_populates="pond_data")
 #     created_at = Column(DateTime, default=datetime.utcnow)
 #     updated_at = Column(DateTime, default=datetime.utcnow)
-
-
-
 
 
 class Wallet(Base):
