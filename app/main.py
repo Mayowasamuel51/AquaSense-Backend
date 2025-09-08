@@ -50,7 +50,6 @@ class GlobalErrorMiddleware(BaseHTTPMiddleware):
                     "detail": "An unexpected error occurred. Please try again later.",
                 },
             )
-
 app.add_middleware(GlobalErrorMiddleware)
 # routers
 
