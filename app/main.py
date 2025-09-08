@@ -1,6 +1,7 @@
 from fastapi import FastAPI,  Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
+# from starlette.responses import JSONResponse
+from fastapi.responses import JSONResponse
 
 from .config import settings
 from fastapi.exceptions import RequestValidationError
@@ -26,39 +27,39 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-class GlobalErrorMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        try:
-            return await call_next(request)
-
-        # Validation errors (422)
-        except RequestValidationError as exc:
-            return JSONResponse(
-                status_code=422,
-                content={"success": False, "error": "Validation Error", "detail": exc.errors()},
-            )
-
-        # HTTP errors (like 401 Unauthorized, 404 Not Found, etc.)
-        except StarletteHTTPException as exc:
-            return JSONResponse(
-                status_code=exc.status_code,
-                content={"success": False, "error": "HTTP Error", "detail": exc.detail},
-            )
-
-        # Catch-all for unexpected errors
-        except Exception as exc:
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "success": False,
-                    "error": "Internal Server Error",
-                    "detail": "An unexpected error occurred. Please try again later.",
-                },
-            )
-
-app.add_middleware(GlobalErrorMiddleware)
-# routers
+#
+# class GlobalErrorMiddleware(BaseHTTPMiddleware):
+#     async def dispatch(self, request: Request, call_next):
+#         try:
+#             return await call_next(request)
+#
+#         # Validation errors (422)
+#         except RequestValidationError as exc:
+#             return JSONResponse(
+#                 status_code=422,
+#                 content={"success": False, "error": "Validation Error", "detail": exc.errors()},
+#             )
+#
+#         # HTTP errors (like 401 Unauthorized, 404 Not Found, etc.)
+#         except StarletteHTTPException as exc:
+#             return JSONResponse(
+#                 status_code=exc.status_code,
+#                 content={"success": False, "error": "HTTP Error", "detail": exc.detail},
+#             )
+#
+#         # Catch-all for unexpected errors
+#         except Exception as exc:
+#             return JSONResponse(
+#                 status_code=500,
+#                 content={
+#                     "success": False,
+#                     "error": "Internal Server Error",
+#                     "detail": "An unexpected error occurred. Please try again later.",
+#                 },
+#             )
+#
+# app.add_middleware(GlobalErrorMiddleware)
+# # routers
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")# 👈 no need to add /auth again
