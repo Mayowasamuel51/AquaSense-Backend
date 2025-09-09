@@ -27,38 +27,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-#
-# class GlobalErrorMiddleware(BaseHTTPMiddleware):
-#     async def dispatch(self, request: Request, call_next):
-#         try:
-#             return await call_next(request)
-#
-#         # Validation errors (422)
-#         except RequestValidationError as exc:
-#             return JSONResponse(
-#                 status_code=422,
-#                 content={"success": False, "error": "Validation Error", "detail": exc.errors()},
-#             )
-#
-#         # HTTP errors (like 401 Unauthorized, 404 Not Found, etc.)
-#         except StarletteHTTPException as exc:
-#             return JSONResponse(
-#                 status_code=exc.status_code,
-#                 content={"success": False, "error": "HTTP Error", "detail": exc.detail},
-#             )
-#
-#         # Catch-all for unexpected errors
-#         except Exception as exc:
-#             return JSONResponse(
-#                 status_code=500,
-#                 content={
-#                     "success": False,
-#                     "error": "Internal Server Error",
-#                     "detail": "An unexpected error occurred. Please try again later.",
-#                 },
-#             )
-#
-# app.add_middleware(GlobalErrorMiddleware)
+
+class GlobalErrorMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+
+        # Validation errors (422)
+        except RequestValidationError as exc:
+            return JSONResponse(
+                status_code=422,
+                content={"success": False, "error": "Validation Error", "detail": exc.errors()},
+            )
+
+        # HTTP errors (like 401 Unauthorized, 404 Not Found, etc.)
+        except StarletteHTTPException as exc:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"success": False, "error": "HTTP Error", "detail": exc.detail},
+            )
+
+        # Catch-all for unexpected errors
+        except Exception as exc:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "error": "Internal Server Error",
+                    "detail": "An unexpected error occurred. Please try again later.",
+                },
+            )
+
+app.add_middleware(GlobalErrorMiddleware)
 # # routers
 
 app.include_router(health.router, prefix="/api/v1")
