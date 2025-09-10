@@ -22,23 +22,20 @@ class ProfileUpdate(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
 
-
-@router.get("/", response_model= UserProfileUpdate)
-def get_user_information(user: User = Depends(get_current_user),db: Session = Depends(get_db),
-) -> Any:
-    """
-    Get the authenticated user's profile information.
-    """
+@router.get("/", response_model=UserProfileResponse)
+def get_user_information(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found")
-    # user_schema = UserProfileUpdate.model_validate(db_user)
+        raise HTTPException(status_code=404, detail="User not found")
+
     return {
         "message": "Showing user information",
         "data": db_user
     }
+
 
 @router.post('/')
 def profileUpdate(body:ProfileUpdate, user: User = Depends(get_current_user),   db: Session = Depends(get_db)):

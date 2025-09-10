@@ -17,6 +17,8 @@ router = APIRouter(prefix="/createmyfarm", tags=["createmyfarm"])
 class MyfarmBase(BaseModel):
     email: EmailStr | None = None
     farm_name:str
+    farm_type:str
+    farm_image: Optional[str] = None
 
 
 @router.get('/', response_model=List[ShowmyFarm])

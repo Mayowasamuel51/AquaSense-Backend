@@ -39,9 +39,9 @@ class MyFarm(Base):
     __tablename__ = "farm"
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    farm_image = Column(String(520), unique=True, nullable=False)
-    farm_name = Column(String(520), unique=True, nullable=False)
-    farm_type= Column(String(520), unique=True, nullable=False)
+    farm_image = Column(String(520), nullable=True)
+    farm_name = Column(String(520), nullable=True)
+    farm_type= Column(String(520),  nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 

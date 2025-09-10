@@ -25,6 +25,7 @@ class UserProfileUpdate(BaseModel):
     bio: str | None = None
     gender: str | None = None
     first_name:str | None = None
+    myfarm: str | None = None
     last_name: str | None = None
     location:str | None = None
     profilepicture:str | None = None

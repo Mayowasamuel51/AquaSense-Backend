@@ -53,7 +53,7 @@ class GlobalErrorMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content={
                     "success": False,
-                    "error": "Internal Server Error",
+                    "error": "Internal Server Error from the backend , application still in progress ",
                     "detail": "An unexpected error occurred. Please try again later.",
                 },
             )
