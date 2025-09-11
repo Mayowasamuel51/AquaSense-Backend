@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator
+from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator , VerificationToken
 from typing import Optional ,  List
 from sqlalchemy.orm import Session
 from passlib.hash import argon2
 import smtplib
 from ..database  import get_db
+from datetime import datetime , timedelta
 from ..models import User
 from ..schemas import UserOut
 from ..dep.security import create_tokens , get_current_user , create_verification_token
@@ -88,7 +89,20 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     }
 
 
-#
+@router.get("/verify")
+def verify_email(token: str, db: Session = Depends(get_db)):
+    vt = db.query(VerificationToken).filter(VerificationToken.token == token).first()
+    if not vt:
+        raise HTTPException(400, "Invalid token")
+    if vt.expires_at < datetime.datetime.utcnow():
+        raise HTTPException(400, "Token expired")
+
+    user = vt.user
+    user.email_verified = True
+    db.delete(vt)  # remove token after use
+    db.commit()
+
+    return {"message": "Email verified successfully!"}
 
 # @router.get("/allusers", response_model=List[UserOut])
 # def getUser(db: Session = Depends(get_db)):

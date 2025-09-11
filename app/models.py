@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, N
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
 import uuid
-from datetime import datetime
+from datetime import datetime , timedelta
 import uuid
 from .database import Base
 import random
@@ -42,7 +42,19 @@ class User(Base):
     roles = Column(JSON, default=["user"])  # stored as JSON array in MySQL
     farm = relationship("Farm", uselist=False, backref="owner")
     workers = relationship("Worker", back_populates="user")
+    # relationship to tokens
+    tokens = relationship("VerificationToken", back_populates="user")
 
+
+class VerificationToken(Base):
+    __tablename__ = "verification_tokens"
+
+    id = Column(Integer,primary_key=True, index=True, autoincrement=True)
+    token = Column(String(255), unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    expires_at = Column(DateTime, default=lambda: datetime.datetime.utcnow() + datetime.timedelta(hours=1))
+
+    user = relationship("User", back_populates="tokens")
 class Worker(Base):
     __tablename__ = "workers"
     id = Column(String(100), primary_key=True, index=True)  # from JSON
