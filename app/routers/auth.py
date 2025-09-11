@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator , VerificationToken
+from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator
 from typing import Optional ,  List
 from sqlalchemy.orm import Session
 from passlib.hash import argon2
 import smtplib
 from ..database  import get_db
 from datetime import datetime , timedelta
-from ..models import User
+from ..models import User , VerificationToken
 from ..schemas import UserOut
 from ..dep.security import create_tokens , get_current_user , create_verification_token
 from email.mime.text import MIMEText
@@ -73,7 +73,7 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     )
     db.add(u); db.commit(); db.refresh(u)
     token = create_verification_token(u.id)
-    verify_url = f"https://api.aquasense.com/auth/verify?token={token}"
+    verify_url = f"http://127.0.0.1:8000/auth/verify?token={token}"
 
     # send verification email
     try:
