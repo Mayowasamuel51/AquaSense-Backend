@@ -66,3 +66,19 @@ def get_current_user(
         )
 
     return user
+
+
+# Verification token lifetime (e.g. 30 minutes)
+VERIFY_TOKEN_TTL = 30
+
+def create_verification_token(user_id: int) -> str:
+    """
+    Create a short-lived JWT token for email verification
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=VERIFY_TOKEN_TTL)).timestamp())
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")

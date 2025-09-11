@@ -1,127 +1,171 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator
-
 from typing import Optional ,  List
 from sqlalchemy.orm import Session
 from passlib.hash import argon2
-
+import smtplib
 from ..database  import get_db
 from ..models import User
 from ..schemas import UserOut
-from ..dep.security import create_tokens , get_current_user
+from ..dep.security import create_tokens , get_current_user , create_verification_token
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
+import os
+from email.message import EmailMessage
+
 router = APIRouter(prefix="/auth", tags=["auth"])
-print(11)
+print(11123)
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+EMAIL_ADDRESS = "fpasamuelmayowa51@gmail.com"       # change to your email
+EMAIL_PASSWORD  = "vbfk nzdd xwoj lkhp"          # use app password (not raw Gmail pass)
+
+def send_verification_email(to_email: str, verify_url: str):
+    msg = EmailMessage()
+    msg['Subject'] = "Verify your AquaSense account"
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = to_email
+
+    msg.set_content(f"""
+    Hi,
+
+    Please verify your AquaSense account by clicking the link below:
+
+    {verify_url}
+
+    If you did not request this, you can safely ignore it.
+    """)
+
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+    except Exception as e:
+        raise Exception(f"Failed to send verification email: {e}")
+
 
 class RegisterIn(BaseModel):
     first_name: str
-    gender: Optional[str] = None
     last_name: str
-    email: EmailStr | None = None
-    phone: str | None = None
+    gender: str
+    email: str
+    phone: Optional[str] = None
     password: str
-@router.get("/allusers", response_model=List[UserOut])
-def getUser(db: Session = Depends(get_db)):
-    users = db.query(User).all()
-    return users
+    access : Optional[str] = None
+
 
 @router.post("/register")
 def register(body: RegisterIn, db: Session = Depends(get_db)):
-    if not body.email and not body.phone:
-        raise HTTPException(400, "email or phone required")
     if body.email and db.query(User).filter(User.email == body.email).first():
         raise HTTPException(409, "email exists")
-    if body.phone and db.query(User).filter(User.phone == body.phone).first():
-        raise HTTPException(409, "phone exists")
+
     u = User(
         email=body.email,
         phone=body.phone,
-        first_name=body.first_name,  # add this
-        last_name=body.last_name,  # add this
-        gender=body.gender,  # optional
+        first_name=body.first_name,
+        last_name=body.last_name,
+        gender=body.gender,
         password_hash=argon2.hash(body.password),
         roles=["user"]
     )
     db.add(u); db.commit(); db.refresh(u)
+    token = create_verification_token(u.id)
+    verify_url = f"https://api.aquasense.com/auth/verify?token={token}"
+
+    # send verification email
+    try:
+        send_verification_email(body.email, verify_url)
+    except Exception as e:
+        raise HTTPException(500, f"Failed to send verification email: {str(e)}")
+
     return {
-        "user_id": str(u.id) ,
-        "message":"user registered successfully",
-        "data":u
+        "user_id": u.id,
+        "data":u,
+        "token":token,
+        "message": "User registered successfully. Please check your email to verify your account."
     }
+
+
 #
 
-
-class LoginIn(BaseModel):
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    password: str
-
-    @ model_validator(mode="after")
-    def at_least_one_identifier(self):
-        if not self.email and not self.phone:
-            raise ValueError("Either email or phone must be provided")
-        return self
-
-
-class UserOut(BaseModel):
-    id: int
-    email: str
-    phone: Optional[str] = None
-    profilepicture: Optional[str] = None
-    nin: Optional[str] = None
-    location: Optional[str] = None
-    kyc_status: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class UserIn(BaseModel):
-    email: EmailStr
-    phone: str
-    password: str
-    profilepicture: Optional[str] = None
-    nin: Optional[str] = None
-    location: Optional[str] = None
-    kyc_status: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class LoginOut(BaseModel):
-    id: int
-    email: str
-    access: str
-    refresh: str
-    token_type: str = "bearer"
-    data: UserOut
-
-
-# ---------- Route ----------
-
-@router.post("/login",  response_model=LoginOut)
-def login(body: LoginIn, db: Session = Depends(get_db)):
-    user = None
-    if body.email:
-        user = db.query(User).filter(User.email == body.email).first()
-    elif body.phone:
-        user = db.query(User).filter(User.phone == body.phone).first()
-
-    if not user or not argon2.verify(body.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    tokens = create_tokens(user.id)
-
-    return {
-        "id": user.id,
-        "email": user.email,
-        "access": tokens["access"],
-        "refresh": tokens["refresh"],
-        "token_type": "bearer",
-        "data": user,  # Auto-converted to UserOut
-    }
+# @router.get("/allusers", response_model=List[UserOut])
+# def getUser(db: Session = Depends(get_db)):
+#     users = db.query(User).all()
+#     return users
+#
+#
+# class LoginIn(BaseModel):
+#     email: Optional[EmailStr] = None
+#     phone: Optional[str] = None
+#     password: str
+#
+#     @ model_validator(mode="after")
+#     def at_least_one_identifier(self):
+#         if not self.email and not self.phone:
+#             raise ValueError("Either email or phone must be provided")
+#         return self
+#
+#
+# class UserOut(BaseModel):
+#     id: int
+#     email: str
+#     phone: Optional[str] = None
+#     profilepicture: Optional[str] = None
+#     nin: Optional[str] = None
+#     location: Optional[str] = None
+#     kyc_status: Optional[str] = None
+#     first_name: Optional[str] = None
+#     last_name: Optional[str] = None
+#
+#     model_config = ConfigDict(from_attributes=True)
+#
+# class UserIn(BaseModel):
+#     email: EmailStr
+#     phone: str
+#     password: str
+#     profilepicture: Optional[str] = None
+#     nin: Optional[str] = None
+#     location: Optional[str] = None
+#     kyc_status: Optional[str] = None
+#     first_name: Optional[str] = None
+#     last_name: Optional[str] = None
+#
+#     model_config = ConfigDict(from_attributes=True)
+#
+# class LoginOut(BaseModel):
+#     id: int
+#     email: str
+#     access: str
+#     refresh: str
+#     token_type: str = "bearer"
+#     data: UserOut
+#
+#
+# # ---------- Route ----------
+#
+# @router.post("/login",  response_model=LoginOut)
+# def login(body: LoginIn, db: Session = Depends(get_db)):
+#     user = None
+#     if body.email:
+#         user = db.query(User).filter(User.email == body.email).first()
+#     elif body.phone:
+#         user = db.query(User).filter(User.phone == body.phone).first()
+#
+#     if not user or not argon2.verify(body.password, user.password_hash):
+#         raise HTTPException(status_code=401, detail="Invalid credentials")
+#
+#     tokens = create_tokens(user.id)
+#
+#     return {
+#         "id": user.id,
+#         "email": user.email,
+#         "access": tokens["access"],
+#         "refresh": tokens["refresh"],
+#         "token_type": "bearer",
+#         "data": user,  # Auto-converted to UserOut
+#     }
 
 # class LoginIn(BaseModel):
 #     email: Optional[EmailStr] = None

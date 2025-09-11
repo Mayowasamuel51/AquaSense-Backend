@@ -5,6 +5,7 @@ sqlalchemy
 pydantic[email]
 mangum
 passlib[bcrypt]
+passlib[argon2]
 python-jose
 pymysql
 alembic
