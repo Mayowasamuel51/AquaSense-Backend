@@ -33,13 +33,14 @@ class User(Base):
     phone = Column(String(50), nullable=True)
     profilepicture = Column(String(255), nullable=True )
     nin = Column(String(50), nullable=True)
+    email_verified = Column(Boolean, default=False)
     kyc_status = Column(String(50), default="unverified")
     emailverified = Column(Boolean, default=False)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
     gender = Column(String(50), nullable=True)
     password_hash = Column(String(255), nullable=False)
-    roles = Column(JSON, default=["user"])  # stored as JSON array in MySQL
+    # roles = Column(JSON, default=["user"])  # stored as JSON array in MySQL
     farm = relationship("Farm", uselist=False, backref="owner")
     workers = relationship("Worker", back_populates="user")
     # relationship to tokens

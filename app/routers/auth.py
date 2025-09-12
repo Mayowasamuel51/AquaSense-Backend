@@ -90,7 +90,6 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
         "message": "User registered successfully. Please check your email to verify your account."
     }
 
-
 @router.get("/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
     vt = db.query(VerificationToken).filter(VerificationToken.token == token).first()
@@ -106,22 +105,66 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
     return {"message": "Email verified successfully!"}
 
-# @router.get("/allusers", response_model=List[UserOut])
-# def getUser(db: Session = Depends(get_db)):
-#     users = db.query(User).all()
-#     return users
-#
-#
+@router.get("/allusers", response_model=List[UserOut])
+def getUser(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return users
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+@router.post("/login")
+def login(body: LoginIn, db: Session = Depends(get_db)):
+    # 1. Get user
+    user = db.query(User).filter(User.email == body.email).first()
+    if not user:
+        raise HTTPException(401, "Invalid email or password")
+
+    # 2. Check password
+    if not argon2.verify(body.password, user.password_hash):
+        raise HTTPException(401, "Invalid email or password")
+
+    # 3. Check email verified
+    if not user.email_verified:
+        raise HTTPException(403, "Please verify your email before logging in")
+
+    # 4. Create tokens
+    tokens = create_tokens(user.id)
+
+    # 5. Return full user data + tokens
+    return {
+        "user": UserOut.model_validate(user).model_dump(),
+        "token_type": "bearer",
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # class LoginIn(BaseModel):
 #     email: Optional[EmailStr] = None
 #     phone: Optional[str] = None
 #     password: str
 #
-#     @ model_validator(mode="after")
-#     def at_least_one_identifier(self):
-#         if not self.email and not self.phone:
-#             raise ValueError("Either email or phone must be provided")
-#         return self
+#     # @ model_validator(mode="after")
+#     # def at_least_one_identifier(self):
+#     #     if not self.email and not self.phone:
+#     #         raise ValueError("Either email or phone must be provided")
+#     #     return self
 #
 #
 # class UserOut(BaseModel):
@@ -134,9 +177,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 #     kyc_status: Optional[str] = None
 #     first_name: Optional[str] = None
 #     last_name: Optional[str] = None
-#
 #     model_config = ConfigDict(from_attributes=True)
-#
+
 # class UserIn(BaseModel):
 #     email: EmailStr
 #     phone: str
@@ -160,20 +202,15 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 #
 #
 # # ---------- Route ----------
-#
+
 # @router.post("/login",  response_model=LoginOut)
 # def login(body: LoginIn, db: Session = Depends(get_db)):
 #     user = None
 #     if body.email:
 #         user = db.query(User).filter(User.email == body.email).first()
-#     elif body.phone:
-#         user = db.query(User).filter(User.phone == body.phone).first()
-#
 #     if not user or not argon2.verify(body.password, user.password_hash):
 #         raise HTTPException(status_code=401, detail="Invalid credentials")
-#
 #     tokens = create_tokens(user.id)
-#
 #     return {
 #         "id": user.id,
 #         "email": user.email,
