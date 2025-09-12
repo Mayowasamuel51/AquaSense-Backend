@@ -6,7 +6,7 @@ from passlib.hash import argon2
 import smtplib
 from ..database  import get_db
 from datetime import datetime , timedelta
-from ..models import User , VerificationToken
+from ..models import User , VerificationToken , Farm
 from ..schemas import UserOut
 from ..dep.security import create_tokens , get_current_user , create_verification_token , create_token
 from email.mime.text import MIMEText
@@ -67,8 +67,21 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
         last_name=body.last_name,
         gender=body.gender,
         password_hash=argon2.hash(body.password),
-        roles=["user"]
+        # roles=["user"]
     )
+
+    # create empty farm
+    farm = Farm(
+        address="null",
+        longitude="",
+        latitude="",
+        city="",
+        state="",
+        farmname="",
+        area=""
+    )
+    u.farm = farm
+
     db.add(u); db.commit(); db.refresh(u)
     token = create_verification_token(u.id)
     verify_url = f"https://aquasense-backend-jsa5.onrender.com/auth/verify?token={token}"

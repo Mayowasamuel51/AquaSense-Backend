@@ -35,7 +35,7 @@ class User(Base):
     nin = Column(String(50), nullable=True)
     email_verified = Column(Boolean, default=False)
     kyc_status = Column(String(50), default="unverified")
-    emailverified = Column(Boolean, default=False)
+    # emailverified = Column(Boolean, default=False)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
     gender = Column(String(50), nullable=True)
