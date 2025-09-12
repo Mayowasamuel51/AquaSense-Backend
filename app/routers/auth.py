@@ -14,14 +14,16 @@ from email.mime.multipart import MIMEMultipart
 import smtplib
 import os
 from email.message import EmailMessage
-
+import logging
+from fastapi import BackgroundTasks
+logger = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/auth", tags=["auth"])
 print(11123)
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 EMAIL_ADDRESS = "fpasamuelmayowa51@gmail.com"       # change to your email
-EMAIL_PASSWORD  = "vbfk nzdd xwoj lkhp"          # use app password (not raw Gmail pass)
+EMAIL_PASSWORD  = "cvzy htcq fzsa tybs"          # use app password (not raw Gmail pass)
 
 def send_verification_email(to_email: str, verify_url: str):
     msg = EmailMessage()
@@ -31,21 +33,18 @@ def send_verification_email(to_email: str, verify_url: str):
 
     msg.set_content(f"""
     Hi,
-
     Please verify your AquaSense account by clicking the link below:
-
     {verify_url}
-
     If you did not request this, you can safely ignore it.
     """)
-
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             smtp.send_message(msg)
+            logger.info(f"Verification email sent to {to_email}")
     except Exception as e:
+        logger.info(f"Verification email sent to {to_email}")
         raise Exception(f"Failed to send verification email: {e}")
-
 
 class RegisterIn(BaseModel):
     first_name: str
@@ -58,7 +57,7 @@ class RegisterIn(BaseModel):
 
 
 @router.post("/register")
-def register(body: RegisterIn, db: Session = Depends(get_db)):
+def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if body.email and db.query(User).filter(User.email == body.email).first():
         raise HTTPException(409, "email exists")
     u = User(
@@ -74,11 +73,15 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     token = create_verification_token(u.id)
     verify_url = f"https://aquasense-backend-jsa5.onrender.com/auth/verify?token={token}"
 
+    # send verification email in background
+    background_tasks.add_task(send_verification_email, body.email, verify_url)
+
+
     # send verification email
-    try:
-        send_verification_email(body.email, verify_url)
-    except Exception as e:
-        raise HTTPException(500, f"Failed to send verification email: {str(e)}")
+    # try:
+    #     # send_verification_email(body.email, verify_url)
+    # except Exception as e:
+    #     raise HTTPException(500, f"Failed to send verification email: {str(e)}")
 
     return {
         "user_id": u.id,
