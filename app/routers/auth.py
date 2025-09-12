@@ -72,7 +72,7 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
 
     # create empty farm
     farm = Farm(
-        address="null",
+        address="",
         longitude="",
         latitude="",
         city="",
@@ -151,7 +151,11 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
 
     # 4. Create tokens
     tokens = create_tokens(user.id)
-
+    # return {
+    #     "access_token": tokens["access_token"],
+    #     "refresh_token": tokens["refresh_token"],
+    #     "user": UserOut.from_orm(user)
+    # }
     # 5. Return full user data + tokens
     return {
         "user": UserOut.model_validate(user),
@@ -159,6 +163,26 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
         "access_token": tokens["access_token"],
         "refresh_token": tokens["refresh_token"],
     }
+    # return {
+    #     "user": {
+    #         "id": user.id,
+    #         "email": user.email,
+    #         "first_name": user.first_name,
+    #         "last_name": user.last_name,
+    #         # ✅ reference the relationship directly
+    #         "farm": {
+    #             "id": user.farm.id if user.farm else None,
+    #             "farmname": user.farm.farmname if user.farm else None,
+    #             "address": user.farm.address if user.farm else None,
+    #             "longitude": user.farm.longitude if user.farm else None,
+    #             "latitude": user.farm.latitude if user.farm else None,
+    #             "city": user.farm.city if user.farm else None,
+    #             "state": user.farm.state if user.farm else None,
+    #             "area": user.farm.area if user.farm else None,
+    #         }
+    #     },
+    #     "tokens": tokens
+    # }
 
 
 

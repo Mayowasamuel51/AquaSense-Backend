@@ -15,6 +15,7 @@ class WorkerOut(WorkerBase):
         from_attributes = True
 
 class FarmBase(BaseModel):
+    id: int
     address: Optional[str] = None
     longitude: Optional[str] = None
     latitude: Optional[str] = None
@@ -24,6 +25,7 @@ class FarmBase(BaseModel):
     area: Optional[str] = None
 
 class FarmOut(FarmBase):
+
     class Config:
         from_attributes = True
 
