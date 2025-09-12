@@ -61,7 +61,6 @@ class RegisterIn(BaseModel):
 def register(body: RegisterIn, db: Session = Depends(get_db)):
     if body.email and db.query(User).filter(User.email == body.email).first():
         raise HTTPException(409, "email exists")
-
     u = User(
         email=body.email,
         phone=body.phone,
@@ -73,7 +72,7 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     )
     db.add(u); db.commit(); db.refresh(u)
     token = create_verification_token(u.id)
-    verify_url = f"http://127.0.0.1:8000/auth/verify?token={token}"
+    verify_url = f"https://aquasense-backend-jsa5.onrender.com/auth/verify?token={token}"
 
     # send verification email
     try:
