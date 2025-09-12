@@ -47,33 +47,127 @@ EMAIL_PASSWORD  = "cvzy htcq fzsa tybs"          # use app password (not raw Gma
 #         logger.info(f"Verification email sent to {to_email}")
 #         raise Exception(f"Failed to send verification email: {e}")
 
-def send_verification_email(to_email: str, verify_url: str):
+def send_verification_email(to_email: str, token: str):
     msg = EmailMessage()
     msg['Subject'] = "Verify your AquaSense account"
     msg['From'] = EMAIL_ADDRESS
     msg['To'] = to_email
-    # HTML body with button
-    html_content = f"""
-    <html>
-      <body>
-        <h2>Welcome to AquaSense 👋</h2>
-        <p>Please verify your email to activate your account.</p>
-        <a href="{verify_url}" 
-           style="display:inline-block;
-                  padding:10px 20px;
-                  background-color:#007BFF;
-                  color:#ffffff;
-                  text-decoration:none;
-                  border-radius:5px;
-                  font-weight:bold;">
-          Verify My Email
-        </a>
-       
-      </body>
-    </html>
-    """
-    # Attach both plain text (fallback) and HTML
-    msg.set_content(f"Please verify your AquaSense account by clicking the link: {verify_url}")
+
+    # Links
+    deep_link = f"aquasense://verify?token={token}"
+    web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
+
+    # ✅ Plain text fallback
+    msg.set_content(f"""\
+Hi,
+
+Thank you for registering with AquaSense!
+
+Please verify your email by opening this link in the app:
+{deep_link}
+
+If that doesn’t work, copy and paste this link into your browser:
+{web_link}
+
+If you didn’t sign up, you can safely ignore this email.
+""")
+
+    # ✅ HTML template with dynamic token (no first name)
+    html_content = f"""\
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Verify Your Email - AquaSense</title>
+  <style>
+    body, table, td, a {{
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }}
+    body {{
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      font-family: Arial, sans-serif;
+    }}
+    table {{
+      border-collapse: collapse !important;
+    }}
+    .container {{
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }}
+    .header {{
+      background-color: #276882;
+      padding: 20px;
+      text-align: center;
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: bold;
+    }}
+    .content {{
+      padding: 30px;
+      text-align: center;
+      color: #333333;
+    }}
+    .button {{
+      display: inline-block;
+      padding: 14px 28px;
+      margin: 20px 0;
+      background-color: #276882;
+      color: #ffffff !important;
+      font-size: 16px;
+      font-weight: bold;
+      text-decoration: none;
+      border-radius: 6px;
+    }}
+    .footer {{
+      background-color: #f9f9f9;
+      padding: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #888888;
+    }}
+    a {{
+      color: #276882;
+    }}
+  </style>
+</head>
+<body>
+  <table width="100%">
+    <tr>
+      <td>
+        <div class="container">
+          <div class="header">
+            AquaSense
+          </div>
+          <div class="content">
+            <h2>Hi,</h2>
+            <p>Thank you for registering with <strong>AquaSense</strong>!</p>
+            <p>Please verify your email address to complete your registration and activate your account.</p>
+
+            <!-- ✅ Deep link button -->
+            <a href="{deep_link}" class="button">Verify Email</a>
+
+            <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+            <p><a href="{web_link}">{web_link}</a></p>
+          </div>
+          <div class="footer">
+            If you didn’t sign up for AquaSense, you can safely ignore this email.
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+    # Attach HTML version
     msg.add_alternative(html_content, subtype="html")
 
     try:
@@ -84,6 +178,7 @@ def send_verification_email(to_email: str, verify_url: str):
     except Exception as e:
         logger.error(f"Failed to send verification email: {e}")
         raise Exception(f"Failed to send verification email: {e}")
+
 
 class RegisterIn(BaseModel):
     first_name: str
@@ -96,9 +191,10 @@ class RegisterIn(BaseModel):
 
 
 @router.post("/register")
-def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if body.email and db.query(User).filter(User.email == body.email).first():
         raise HTTPException(409, "email exists")
+
     u = User(
         email=body.email,
         phone=body.phone,
@@ -106,9 +202,12 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
         last_name=body.last_name,
         gender=body.gender,
         password_hash=argon2.hash(body.password),
-        # roles=["user"]
     )
-    db.add(u); db.commit(); db.refresh(u)
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+
+    # Generate verification token
     token = create_verification_token(u.id)
     db_token = VerificationToken(
         token=token,
@@ -117,22 +216,17 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
     )
     db.add(db_token)
     db.commit()
-    verify_url = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
-    # send verification email in background
-    background_tasks.add_task(send_verification_email, body.email, verify_url)
 
-    # send verification email
-    # try:
-    #     # send_verification_email(body.email, verify_url)
-    # except Exception as e:
-    #     raise HTTPException(500, f"Failed to send verification email: {str(e)}")
+    # Send email in background
+    background_tasks.add_task(send_verification_email, body.email, token)
 
     return {
         "user_id": u.id,
-        "data":u,
-        "token":token,
+        "data": u,
+        "token": token,
         "message": "User registered successfully. Please check your email to verify your account."
     }
+
 
 @router.get("/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
