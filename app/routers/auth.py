@@ -8,7 +8,7 @@ from ..database  import get_db
 from datetime import datetime , timedelta
 from ..models import User , VerificationToken
 from ..schemas import UserOut
-from ..dep.security import create_tokens , get_current_user , create_verification_token
+from ..dep.security import create_tokens , get_current_user , create_verification_token , create_token
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
@@ -115,8 +115,13 @@ class LoginIn(BaseModel):
     email: EmailStr
     password: str
 
+class LoginOut(BaseModel):
+    user: UserOut
+    token_type: str = "bearer"
+    access_token: str
+    refresh_token: Optional[str] = None
 
-@router.post("/login")
+@router.post("/login", response_model=LoginOut)
 def login(body: LoginIn, db: Session = Depends(get_db)):
     # 1. Get user
     user = db.query(User).filter(User.email == body.email).first()
@@ -136,7 +141,7 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
 
     # 5. Return full user data + tokens
     return {
-        "user": UserOut.model_validate(user).model_dump(),
+        "user": UserOut.model_validate(user),
         "token_type": "bearer",
         "access_token": tokens["access_token"],
         "refresh_token": tokens["refresh_token"],

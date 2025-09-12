@@ -45,7 +45,6 @@ class UserOut(UserBase):
     id: int
     farm: Optional[FarmOut]
     workers: List[WorkerOut] = []
-
     class Config:
         from_attributes = True
 

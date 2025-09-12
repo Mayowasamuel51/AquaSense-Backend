@@ -33,8 +33,8 @@ def create_token(subject: int, secret: str, days: int):
 # ✅ create access + refresh tokens
 def create_tokens(user_id: int):
     return {
-        "access": create_token(user_id, JWT_SECRET, ACCESS_TTL),
-        "refresh": create_token(user_id, JWT_REFRESH_SECRET, REFRESH_TTL),
+        "access_token": create_token(user_id, JWT_SECRET, ACCESS_TTL),
+        "refresh_token": create_token(user_id, JWT_REFRESH_SECRET, REFRESH_TTL),
     }
 
 
