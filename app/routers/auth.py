@@ -240,7 +240,10 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     db.delete(vt)  # remove token after use
     db.commit()
 
-    return {"message": "Email verified successfully!"}
+    return {
+        "message": "Email verified successfully!",
+        "data":user
+    }
 
 @router.get("/allusers", response_model=List[UserOut])
 def getUser(db: Session = Depends(get_db)):
