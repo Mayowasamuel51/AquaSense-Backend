@@ -68,8 +68,7 @@ def send_verification_email(to_email: str, verify_url: str):
                   font-weight:bold;">
           Verify My Email
         </a>
-        <p>If the button doesn’t work, copy and paste this link into your browser:</p>
-      
+       
       </body>
     </html>
     """
