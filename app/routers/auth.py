@@ -93,7 +93,7 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
     )
     db.add(db_token)
     db.commit()
-    verify_url = f"http://127.0.0.1:8000/api/v1/auth/verify?token={token}"
+    verify_url = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
 
     # send verification email in background
     background_tasks.add_task(send_verification_email, body.email, verify_url)
@@ -119,7 +119,6 @@ def verify_email(token: str, db: Session = Depends(get_db)):
         raise HTTPException(400, "Invalid token")
     if vt.expires_at < datetime.utcnow():
         raise HTTPException(400, "Token expired")
-
     user = vt.user
     user.email_verified = True
     db.delete(vt)  # remove token after use

@@ -49,13 +49,13 @@ class User(Base):
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
-
     id = Column(Integer,primary_key=True, index=True, autoincrement=True)
     token = Column(String(255), unique=True, index=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
     expires_at = Column(DateTime, default=lambda: datetime.datetime.utcnow() + datetime.timedelta(hours=1))
-
     user = relationship("User", back_populates="tokens")
+
+
 class Worker(Base):
     __tablename__ = "workers"
     id = Column(String(100), primary_key=True, index=True)  # from JSON
