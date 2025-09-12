@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from passlib.hash import argon2
 import smtplib
 from ..database  import get_db
-from datetime import datetime , timedelta
+from datetime import datetime, timedelta
 from ..models import User , VerificationToken , Farm
 from ..schemas import UserOut
 from ..dep.security import create_tokens , get_current_user , create_verification_token , create_token
@@ -71,20 +71,29 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
     )
 
     # create empty farm
-    farm = Farm(
-        address="",
-        longitude="",
-        latitude="",
-        city="",
-        state="",
-        farmname="",
-        area=""
-    )
-    u.farm = farm
+    # farm = Farm(
+    #     address="",
+    #     longitude="",
+    #     latitude="",
+    #     city="",
+    #     state="",
+    #     farmname="",
+    #     area=""
+    # )
+    # u.farm = farm
+
+
 
     db.add(u); db.commit(); db.refresh(u)
     token = create_verification_token(u.id)
-    verify_url = f"https://aquasense-backend-jsa5.onrender.com/auth/verify?token={token}"
+    db_token = VerificationToken(
+        token=token,
+        user_id=u.id,
+        expires_at=datetime.utcnow() + timedelta(minutes=30)
+    )
+    db.add(db_token)
+    db.commit()
+    verify_url = f"http://127.0.0.1:8000/api/v1/auth/verify?token={token}"
 
     # send verification email in background
     background_tasks.add_task(send_verification_email, body.email, verify_url)
@@ -108,7 +117,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     vt = db.query(VerificationToken).filter(VerificationToken.token == token).first()
     if not vt:
         raise HTTPException(400, "Invalid token")
-    if vt.expires_at < datetime.datetime.utcnow():
+    if vt.expires_at < datetime.utcnow():
         raise HTTPException(400, "Token expired")
 
     user = vt.user
