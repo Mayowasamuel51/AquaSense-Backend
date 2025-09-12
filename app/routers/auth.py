@@ -25,25 +25,65 @@ SMTP_PORT = 587
 EMAIL_ADDRESS = "fpasamuelmayowa51@gmail.com"       # change to your email
 EMAIL_PASSWORD  = "cvzy htcq fzsa tybs"          # use app password (not raw Gmail pass)
 
+# def send_verification_email(to_email: str, verify_url: str):
+#     msg = EmailMessage()
+#     msg['Subject'] = "Verify your AquaSense account"
+#     msg['From'] = EMAIL_ADDRESS
+#     msg['To'] = to_email
+#
+#     # msg.set_content(f"""
+#     # Hi,
+#     # Please verify your AquaSense account by clicking the link below:
+#     # {verify_url}
+#     # If you did not request this, you can safely ignore it.
+#     # """)
+#
+#     try:
+#         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+#             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+#             smtp.send_message(msg)
+#             logger.info(f"Verification email sent to {to_email}")
+#     except Exception as e:
+#         logger.info(f"Verification email sent to {to_email}")
+#         raise Exception(f"Failed to send verification email: {e}")
+
 def send_verification_email(to_email: str, verify_url: str):
     msg = EmailMessage()
     msg['Subject'] = "Verify your AquaSense account"
     msg['From'] = EMAIL_ADDRESS
     msg['To'] = to_email
+    # HTML body with button
+    html_content = f"""
+    <html>
+      <body>
+        <h2>Welcome to AquaSense 👋</h2>
+        <p>Please verify your email to activate your account.</p>
+        <a href="{verify_url}" 
+           style="display:inline-block;
+                  padding:10px 20px;
+                  background-color:#007BFF;
+                  color:#ffffff;
+                  text-decoration:none;
+                  border-radius:5px;
+                  font-weight:bold;">
+          Verify My Email
+        </a>
+        <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+      
+      </body>
+    </html>
+    """
+    # Attach both plain text (fallback) and HTML
+    msg.set_content(f"Please verify your AquaSense account by clicking the link: {verify_url}")
+    msg.add_alternative(html_content, subtype="html")
 
-    msg.set_content(f"""
-    Hi,
-    Please verify your AquaSense account by clicking the link below:
-    {verify_url}
-    If you did not request this, you can safely ignore it.
-    """)
     try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             smtp.send_message(msg)
             logger.info(f"Verification email sent to {to_email}")
     except Exception as e:
-        logger.info(f"Verification email sent to {to_email}")
+        logger.error(f"Failed to send verification email: {e}")
         raise Exception(f"Failed to send verification email: {e}")
 
 class RegisterIn(BaseModel):
@@ -69,21 +109,6 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
         password_hash=argon2.hash(body.password),
         # roles=["user"]
     )
-
-    # create empty farm
-    # farm = Farm(
-    #     address="",
-    #     longitude="",
-    #     latitude="",
-    #     city="",
-    #     state="",
-    #     farmname="",
-    #     area=""
-    # )
-    # u.farm = farm
-
-
-
     db.add(u); db.commit(); db.refresh(u)
     token = create_verification_token(u.id)
     db_token = VerificationToken(
@@ -94,10 +119,8 @@ def register(body: RegisterIn,background_tasks: BackgroundTasks, db: Session = D
     db.add(db_token)
     db.commit()
     verify_url = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
-
     # send verification email in background
     background_tasks.add_task(send_verification_email, body.email, verify_url)
-
 
     # send verification email
     # try:
