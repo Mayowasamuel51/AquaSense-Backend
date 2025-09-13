@@ -121,7 +121,7 @@ EMAIL_HTML_TEMPLATE = """
             AquaSense
           </div>
           <div class="content">
-            <h2>Hi {{ userName }},</h2>
+            <h2>Hi {{ full_name }},</h2>
             <p>Thank you for registering with <strong>AquaSense</strong>!</p>
             <p>Please verify your email address to complete your registration and activate your account.</p>
 
@@ -142,7 +142,7 @@ EMAIL_HTML_TEMPLATE = """
 </html>
 """
 
-def send_verification_email(to_email: str, token: str, userName: str ):
+def send_verification_email(to_email: str, token: str, full_name: str ):
     msg = EmailMessage()
     msg['Subject'] = "Verify your AquaSense account"
     msg['From'] = EMAIL_ADDRESS
@@ -154,7 +154,7 @@ def send_verification_email(to_email: str, token: str, userName: str ):
 
     # ✅ Plain text fallback
     msg.set_content(f"""\
-    Hi {userName},
+    Hi {full_name},
 
     Thank you for registering with AquaSense!
 
@@ -169,7 +169,7 @@ def send_verification_email(to_email: str, token: str, userName: str ):
 
     # ✅ Render HTML with Jinja2
     template = Template(EMAIL_HTML_TEMPLATE)
-    html_content = template.render(userName=userName, deep_link=deep_link, web_link=web_link)
+    html_content = template.render(userName=full_name, deep_link=deep_link, web_link=web_link)
 
     # Attach HTML version
     msg.add_alternative(html_content, subtype="html")
@@ -219,11 +219,12 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
         user_id=u.id,
         expires_at=datetime.utcnow() + timedelta(minutes=30)
     )
+    full_name = f"{u.first_name} ".strip()
+    # Send email in background
+    background_tasks.add_task(send_verification_email, body.email, token, full_name)
     db.add(db_token)
     db.commit()
-    full_name = f"{u.first_name} "
-    # Send email in background
-    background_tasks.add_task(send_verification_email, body.email, token , full_name)
+
 
     return {
         "user_id": u.id,
