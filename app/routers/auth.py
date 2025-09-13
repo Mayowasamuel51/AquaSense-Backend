@@ -221,7 +221,7 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     )
     db.add(db_token)
     db.commit()
-    full_name = f"{body.first_name} "
+    full_name = f"{u.first_name} "
     # Send email in background
     background_tasks.add_task(send_verification_email, body.email, token , full_name)
 
