@@ -173,6 +173,7 @@ def send_verification_email(to_email: str, token: str, full_name: str ):
 
     # Attach HTML version
     msg.add_alternative(html_content, subtype="html")
+    print(html_content)
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
@@ -214,6 +215,8 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
 
     # Generate verification token
     token = create_verification_token(u.id)
+    full_name = u.first_name or "there"
+
     db_token = VerificationToken(
         token=token,
         user_id=u.id,
