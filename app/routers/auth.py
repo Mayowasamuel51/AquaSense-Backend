@@ -220,7 +220,8 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
         expires_at=datetime.utcnow() + timedelta(minutes=30)
     )
 
-    full_name = u.first_name
+    full_name = u.first_name or "there"
+    print(full_name)
 
     # Send email in background
     background_tasks.add_task(send_verification_email, body.email, token, full_name)
