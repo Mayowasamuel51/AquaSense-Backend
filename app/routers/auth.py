@@ -6,6 +6,7 @@ from passlib.hash import argon2
 import smtplib
 from ..database  import get_db
 from datetime import datetime, timedelta
+from jinja2 import Template
 from ..models import User , VerificationToken , Farm
 from ..schemas import UserOut
 from ..dep.security import create_tokens , get_current_user , create_verification_token , create_token
@@ -47,74 +48,48 @@ EMAIL_PASSWORD  = "cvzy htcq fzsa tybs"          # use app password (not raw Gma
 #         logger.info(f"Verification email sent to {to_email}")
 #         raise Exception(f"Failed to send verification email: {e}")
 
-def send_verification_email(to_email: str, token: str):
-    msg = EmailMessage()
-    msg['Subject'] = "Verify your AquaSense account"
-    msg['From'] = EMAIL_ADDRESS
-    msg['To'] = to_email
-
-    # Links
-    deep_link = f"aquasense://verify?token={token}"
-    web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
-
-    # ✅ Plain text fallback
-    msg.set_content(f"""\
-Hi,
-
-Thank you for registering with AquaSense!
-
-Please verify your email by opening this link in the app:
-{deep_link}
-
-If that doesn’t work, copy and paste this link into your browser:
-{web_link}
-
-If you didn’t sign up, you can safely ignore this email.
-""")
-
-    # ✅ HTML template with dynamic token (no first name)
-    html_content = f"""\
+EMAIL_HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>Verify Your Email - AquaSense</title>
   <style>
-    body, table, td, a {{
+    body, table, td, a {
       -webkit-text-size-adjust: 100%;
       -ms-text-size-adjust: 100%;
-    }}
-    body {{
+    }
+    body {
       margin: 0;
       padding: 0;
       background-color: #f4f4f4;
       font-family: Arial, sans-serif;
-    }}
-    table {{
+    }
+    table {
       border-collapse: collapse !important;
-    }}
-    .container {{
+    }
+    .container {
       max-width: 600px;
       margin: 40px auto;
       background-color: #ffffff;
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }}
-    .header {{
+    }
+    .header {
       background-color: #276882;
       padding: 20px;
       text-align: center;
       color: #ffffff;
       font-size: 24px;
       font-weight: bold;
-    }}
-    .content {{
+    }
+    .content {
       padding: 30px;
       text-align: center;
       color: #333333;
-    }}
-    .button {{
+    }
+    .button {
       display: inline-block;
       padding: 14px 28px;
       margin: 20px 0;
@@ -124,17 +99,17 @@ If you didn’t sign up, you can safely ignore this email.
       font-weight: bold;
       text-decoration: none;
       border-radius: 6px;
-    }}
-    .footer {{
+    }
+    .footer {
       background-color: #f9f9f9;
       padding: 15px;
       text-align: center;
       font-size: 12px;
       color: #888888;
-    }}
-    a {{
+    }
+    a {
       color: #276882;
-    }}
+    }
   </style>
 </head>
 <body>
@@ -146,15 +121,15 @@ If you didn’t sign up, you can safely ignore this email.
             AquaSense
           </div>
           <div class="content">
-            <h2>Hi,</h2>
+            <h2>Hi {{ userName }},</h2>
             <p>Thank you for registering with <strong>AquaSense</strong>!</p>
             <p>Please verify your email address to complete your registration and activate your account.</p>
 
             <!-- ✅ Deep link button -->
-            <a href="{deep_link}" class="button">Verify Email</a>
+            <a href="{{ deep_link }}" class="button">Verify Email</a>
 
             <p>If the button doesn’t work, copy and paste this link into your browser:</p>
-            <p><a href="{web_link}">{web_link}</a></p>
+            <p><a href="{{ web_link }}">{{ web_link }}</a></p>
           </div>
           <div class="footer">
             If you didn’t sign up for AquaSense, you can safely ignore this email.
@@ -167,6 +142,35 @@ If you didn’t sign up, you can safely ignore this email.
 </html>
 """
 
+def send_verification_email(to_email: str, token: str, userName: str = "User"):
+    msg = EmailMessage()
+    msg['Subject'] = "Verify your AquaSense account"
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = to_email
+
+    # Links
+    deep_link = f"aquasense://verify?token={token}"
+    web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
+
+    # ✅ Plain text fallback
+    msg.set_content(f"""\
+    Hi {userName},
+
+    Thank you for registering with AquaSense!
+
+    Please verify your email by opening this link in the app:
+    {deep_link}
+
+    If that doesn’t work, copy and paste this link into your browser:
+    {web_link}
+
+    If you didn’t sign up, you can safely ignore this email.
+    """)
+
+    # ✅ Render HTML with Jinja2
+    template = Template(EMAIL_HTML_TEMPLATE)
+    html_content = template.render(userName=userName, deep_link=deep_link, web_link=web_link)
+
     # Attach HTML version
     msg.add_alternative(html_content, subtype="html")
 
@@ -178,6 +182,7 @@ If you didn’t sign up, you can safely ignore this email.
     except Exception as e:
         logger.error(f"Failed to send verification email: {e}")
         raise Exception(f"Failed to send verification email: {e}")
+
 
 
 class RegisterIn(BaseModel):
