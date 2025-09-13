@@ -23,31 +23,64 @@ class FarmBase(BaseModel):
     farmname: str | None = None
     area: str | None = None
 
-@router.post('/')
-def farm(body: FarmBase, user: User = Depends(get_current_user),   db: Session = Depends(get_db)):
+@router.post("/")
+def create_or_update_farm(
+    body: FarmBase,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    new_farm = Farm(
-        address=body.address,
-        longitude=body.longitude,
-        latitude=body.latitude,
-        city=body.city,
-        state=body.state,
-        farmname=body.farmname,
-        area=body.area,
-        owner_id=user.id
-    )
-    db.add(new_farm)
-    db.commit()
-    db.refresh(new_farm)
+    # Check if the user already has a farm
+    existing_farm = db.query(Farm).filter(Farm.owner_id == user.id).first()
+    if existing_farm:
+        # ✅ Update existing farm
+        existing_farm.address = body.address
+        existing_farm.longitude = body.longitude
+        existing_farm.latitude = body.latitude
+        existing_farm.city = body.city
+        existing_farm.state = body.state
+        existing_farm.farmname = body.farmname
+        existing_farm.area = body.area
 
-    return {
-        "message": "You have created your Farm successfully",
-        "id": new_farm.id,
-        "farmname": new_farm.farmname,
-        "owner_id": new_farm.owner_id
-    }
+        db.commit()
+        db.refresh(existing_farm)
+
+        return {
+            "message": "Your farm has been updated successfully",
+            "id": existing_farm.id,
+            "farmname": existing_farm.farmname,
+            "owner_id": existing_farm.owner_id
+        }
+    else:
+        # ✅ Create new farm
+        new_farm = Farm(
+            address=body.address,
+            longitude=body.longitude,
+            latitude=body.latitude,
+            city=body.city,
+            state=body.state,
+            farmname=body.farmname,
+            area=body.area,
+            owner_id=user.id
+        )
+        db.add(new_farm)
+        db.commit()
+        db.refresh(new_farm)
+
+        return {
+            "message": "You have created your farm successfully",
+            "id": new_farm.id,
+            "farmname": new_farm.farmname,
+            "owner_id": new_farm.owner_id
+        }
+
+
+# @router.get('/')
+# def getfarm(user: User = Depends(get_current_user),  db: Session = Depends(get_db)):
+#
+
 
 # @router.get('/', response_model=List[ShowmyFarm])
 # def showmyfarm(user: User = Depends(get_current_user),  db: Session = Depends(get_db)):
