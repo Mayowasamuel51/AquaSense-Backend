@@ -7,7 +7,7 @@ import smtplib
 from ..database  import get_db
 from datetime import datetime, timedelta
 from jinja2 import Template
-from ..models import User , VerificationToken , Farm
+from ..models import User, VerificationToken, Farm, JustData
 from ..schemas import UserOut
 from ..dep.security import create_tokens , get_current_user , create_verification_token , create_token
 from email.mime.text import MIMEText
@@ -212,6 +212,10 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     db.add(u)
     db.commit()
     db.refresh(u)
+    display_name = f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email.split("@")[0]
+    jd = JustData(user_id=u.id, display_name=display_name)
+    db.add(jd)
+    db.commit()
 
     # Generate verification token
     token = create_verification_token(u.id)
@@ -223,7 +227,7 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
         full_name = u.email.split("@")[0]  # fallback to email username
 
     # Send email in background
-    background_tasks.add_task(send_verification_email, body.email, token, full_name)
+    background_tasks.add_task(send_verification_email, body.email, token, jd.display_name)
 
     db_token = VerificationToken(
         token=token,

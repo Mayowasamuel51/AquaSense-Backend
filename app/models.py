@@ -24,7 +24,15 @@ class Farm(Base):
     farmname = Column(String(255), nullable=True)
     area = Column(String(100), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"))  # links to User
+class JustData(Base):
+    __tablename__ = "justdata"
 
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+    display_name = Column(String, nullable=True)
+
+    # relationship back to User
+    user = relationship("User", back_populates="justdata")
 
 class User(Base):
     __tablename__ = "users"
@@ -39,6 +47,8 @@ class User(Base):
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
     gender = Column(String(50), nullable=True)
+
+    justdata = relationship("JustData", back_populates="user", uselist=False)
     password_hash = Column(String(255), nullable=False)
     # roles = Column(JSON, default=["user"])  # stored as JSON array in MySQL
     farm = relationship("Farm", uselist=False, backref="owner")
