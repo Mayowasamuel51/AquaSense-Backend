@@ -256,7 +256,18 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
     return {
         "message": "Email verified successfully!",
-        "data":user
+        "data": {
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "phone": user.phone,
+            "gender": user.gender,
+            "kyc_status": user.kyc_status,
+            "profilepicture":user.profilepicture,
+            "nin": user.nin,
+            "email_verified": user.email_verified
+        }
     }
 
 @router.get("/allusers", response_model=List[UserOut])
