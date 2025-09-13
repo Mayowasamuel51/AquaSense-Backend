@@ -142,7 +142,7 @@ EMAIL_HTML_TEMPLATE = """
 </html>
 """
 
-def send_verification_email(to_email: str, token: str, userName: str = "User"):
+def send_verification_email(to_email: str, token: str, userName: str ):
     msg = EmailMessage()
     msg['Subject'] = "Verify your AquaSense account"
     msg['From'] = EMAIL_ADDRESS
@@ -221,9 +221,9 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     )
     db.add(db_token)
     db.commit()
-
+    full_name = f"{body.first_name} "
     # Send email in background
-    background_tasks.add_task(send_verification_email, body.email, token)
+    background_tasks.add_task(send_verification_email, body.email, token , full_name)
 
     return {
         "user_id": u.id,
