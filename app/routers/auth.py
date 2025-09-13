@@ -151,6 +151,7 @@ def send_verification_email(to_email: str, token: str, full_name: str ):
     # Links
     deep_link = f"aquasense://verify?token={token}"
     web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
+    full_name = full_name
 
     # ✅ Plain text fallback
     msg.set_content(f"""\
