@@ -8,5 +8,6 @@ passlib[bcrypt]
 passlib[argon2]
 python-jose
 pymysql
+jinja2==3.1.4
 alembic
 PyJWT
