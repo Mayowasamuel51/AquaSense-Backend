@@ -220,12 +220,6 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     # Generate verification token
     token = create_verification_token(u.id)
 
-    # ✅ Take the name from the database
-    if u.first_name or u.last_name:
-        full_name = f"{u.first_name or ''} {u.last_name or ''}".strip()
-    else:
-        full_name = u.email.split("@")[0]  # fallback to email username
-
     # Send email in background
     background_tasks.add_task(send_verification_email, body.email, token, jd.display_name)
 
