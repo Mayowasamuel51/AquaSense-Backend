@@ -170,7 +170,7 @@ def send_verification_email(to_email: str, token: str, full_name: str ):
 
     # ✅ Render HTML with Jinja2
     template = Template(EMAIL_HTML_TEMPLATE)
-    html_content = template.render(userName=full_name, deep_link=deep_link, web_link=web_link)
+    html_content = template.render(full_name=full_name, deep_link=deep_link, web_link=web_link)
 
     # Attach HTML version
     msg.add_alternative(html_content, subtype="html")
