@@ -51,3 +51,13 @@ db.commit()
 db.close()
 
 print("✅ Seed data inserted successfully!")
+
+
+
+
+BATCH ----- UNITS  ---- RECORD ----- OTHER
+
+
+
+
+

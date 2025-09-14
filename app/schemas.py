@@ -131,8 +131,8 @@ class BatchBase(BaseModel):
     isCompleted: Optional[bool] = False
 
 class BatchCreate(BatchBase):
-    farmerId: int
-    # pass
+    # farmerId: int
+    pass
 class BatchResponse(BatchBase):
     batchId: str
     farmerId: int

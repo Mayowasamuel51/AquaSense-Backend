@@ -86,7 +86,7 @@ def create_batch(
         farmerId=user.id,
         batchId=str(uuid.uuid4()),
         batchName = batch.batchName,
-        fish_type = batch.fish,
+        fish_type = batch.fish_type,
         number_of_fish = batch.number_of_fish,
         isCompleted = batch.isCompleted
     )
