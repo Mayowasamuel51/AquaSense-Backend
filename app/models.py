@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, Numeric, Date ,Text
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, Numeric, Date, Text, Float
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
 import uuid
@@ -60,7 +60,10 @@ class User(Base):
     # ✅ relationships
     video_progress = relationship("UserVideoProgress", backref="user", cascade="all, delete-orphan")
     test_progress = relationship("UserTestProgress", back_populates="user", cascade="all, delete-orphan")
-
+    # Farming units, batches, and records
+    units = relationship("Unit", back_populates="farmer")
+    batches = relationship("Batch", back_populates="farmer")
+    records = relationship("Record", back_populates="farmer")
 
 
 class VerificationToken(Base):
@@ -71,7 +74,6 @@ class VerificationToken(Base):
     expires_at = Column(DateTime, default=lambda: datetime.datetime.utcnow() + datetime.timedelta(hours=1))
     user = relationship("User", back_populates="tokens")
 
-
 class Worker(Base):
     __tablename__ = "workers"
     id = Column(String(100), primary_key=True, index=True)  # from JSON
@@ -79,7 +81,6 @@ class Worker(Base):
     email = Column(String(255), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="workers")
-
 
 class Module(Base):
     __tablename__ = "modules"
@@ -92,7 +93,6 @@ class Module(Base):
 
     videos = relationship("Video", back_populates="module", cascade="all, delete-orphan")
     tests = relationship("Test", back_populates="module", cascade="all, delete-orphan")
-
 
 class Video(Base):
     __tablename__ = "videos"
@@ -107,7 +107,6 @@ class Video(Base):
 
     module = relationship("Module", back_populates="videos")
 
-
 class Test(Base):
     __tablename__ = "tests"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -120,7 +119,6 @@ class Test(Base):
                            foreign_keys="Option.test_id")
     progresses = relationship("UserTestProgress", back_populates="test", cascade="all, delete-orphan")
 
-
 class Option(Base):
     __tablename__ = "options"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -129,7 +127,6 @@ class Option(Base):
 
     test = relationship("Test", back_populates="options", foreign_keys=[test_id])
 
-
 class UserVideoProgress(Base):
     __tablename__ = "user_video_progress"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -137,8 +134,6 @@ class UserVideoProgress(Base):
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=False)
     is_watched = Column(Boolean, default=False)
     earned_coins = Column(Integer, default=0)
-
-
 
 class UserTestAnswer(Base):
     __tablename__ = "user_test_answers"
@@ -164,6 +159,159 @@ class UserTestProgress(Base):
     user = relationship("User", back_populates="test_progress")
     test = relationship("Test", back_populates="progresses")
     selected_option = relationship("Option", foreign_keys=[selected_option_id])
+
+
+
+class Unit(Base):
+    __tablename__ = "units"
+
+    id = Column(String(50), primary_key=True, index=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    pondName = Column(String(100), nullable=False)
+    pondType = Column(String(50), nullable=False)  # e.g., Earthen, Concrete
+    pondCapacity = Column(Integer, nullable=False)
+    fishes = Column(Integer, nullable=False)
+    imageUrl = Column(String(255))
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, default=None)
+    type = Column(String(50))  # e.g., "Cage" or "Pond"
+    isActive = Column(Boolean, default=False)
+
+    farmer = relationship("User", back_populates="units")
+    records = relationship("Record", back_populates="unit")
+
+class Batch(Base):
+    __tablename__ = "batches"
+
+    batchId = Column(String(50), primary_key=True, index=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchName = Column(String(100), nullable=False)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, default=None)
+    isCompleted = Column(Boolean, default=False)
+
+    farmer = relationship("User", back_populates="batches")
+    records = relationship("Record", back_populates="batch")
+
+class Record(Base):
+    __tablename__ = "records"
+
+    id = Column(String(50), primary_key=True, index=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchId = Column(String(50), ForeignKey("batches.batchId"))
+    unitId = Column(String(50), ForeignKey("units.id"))
+
+    unit = relationship("Unit", back_populates="records")
+    batch = relationship("Batch", back_populates="records")
+    farmer = relationship("User", back_populates="records")
+
+    dailyRecords = relationship("DailyRecord", back_populates="record")
+    weightSamplings = relationship("WeightSampling", back_populates="record")
+    gradingAndSortings = relationship("GradingAndSorting", back_populates="record")
+    harvests = relationship("HarvestForm", back_populates="record")
+
+
+class DailyRecord(Base):
+    __tablename__ = "daily_records"
+
+    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchId = Column(String(50), ForeignKey("batches.batchId"))
+    unitId = Column(String(50), ForeignKey("units.id"))
+    date = Column(DateTime, nullable=False)
+    feedName = Column(String(100), nullable=False)
+    feedSize = Column(String(50), nullable=False)
+    feedQuantity = Column(Float, nullable=False)
+    mortality = Column(Integer, nullable=False)
+    coins = Column(Integer, default=None)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+
+    record = relationship("Record", back_populates="dailyRecords")
+
+class WeightSampling(Base):
+    __tablename__ = "weight_samplings"
+
+    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchId = Column(String(50), ForeignKey("batches.batchId"))
+    unitId = Column(String(50), ForeignKey("units.id"))
+    sampleName = Column(String(100))
+    date = Column(DateTime, nullable=False)
+    fishNumbers = Column(Integer, nullable=False)
+    totalWeight = Column(Float, nullable=False)
+    completed = Column(Boolean, default=False)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+
+    record = relationship("Record", back_populates="weightSamplings")
+
+class Grade(Base):
+    __tablename__ = "grades"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gradingAndSortingId = Column(String(50), ForeignKey("grading_and_sortings.recordId"))
+    destinationBatchId = Column(String(50), nullable=True)
+    destinationBatchName = Column(String(100), nullable=True)
+    destinationUnitId = Column(String(50), nullable=False)
+    destinationUnitName = Column(String(100), nullable=False)
+    averageFishWeight = Column(Float, nullable=False)
+    fishTransferred = Column(Integer, nullable=False)
+
+class GradingAndSorting(Base):
+    __tablename__ = "grading_and_sortings"
+
+    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchId = Column(String(50), ForeignKey("batches.batchId"))
+    unitId = Column(String(50), ForeignKey("units.id"))
+    gradeWith = Column(String(50))
+    sampleName = Column(String(100))
+    date = Column(DateTime, nullable=False)
+    gradingPondNumber = Column(Integer)
+    fishNumbers = Column(Integer)
+    totalWeight = Column(Float)
+    completed = Column(Boolean, default=False)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+
+    record = relationship("Record", back_populates="gradingAndSortings")
+    grades = relationship("Grade", backref="gradingAndSorting")
+
+
+class HarvestForm(Base):
+    __tablename__ = "harvests"
+
+    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchId = Column(String(50), ForeignKey("batches.batchId"))
+    unitId = Column(String(50), ForeignKey("units.id"))
+    date = Column(DateTime, nullable=False)
+    harvestedWeight = Column(Float, nullable=False)
+    harvestedFish = Column(Integer, nullable=False)
+    createdAt = Column(DateTime, default=datetime.utcnow)
+
+    record = relationship("Record", back_populates="harvests")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # class Learn(Base):
 #     __tablename__ = "learns"

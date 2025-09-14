@@ -57,7 +57,6 @@ class OptionOut(BaseModel):
     class Config:
         from_attributes = True
 
-
 class TestOut(BaseModel):
     id: int
     question: str
@@ -65,7 +64,6 @@ class TestOut(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 class VideoOut(BaseModel):
     id: int
@@ -92,7 +90,6 @@ class ModuleOut(BaseModel):
     class Config:
         from_attributes = True
 
-
 class AnswerTestIn(BaseModel):
     test_id: int
     option_id: int
@@ -100,6 +97,176 @@ class AnswerTestIn(BaseModel):
 
 
 
+class UnitBase(BaseModel):
+    pondName: str
+    pondType: str
+    pondCapacity: int
+    fishes: int
+    imageUrl: Optional[str] = None
+    type: Optional[str] = None
+    isActive: Optional[bool] = False
+
+class UnitCreate(UnitBase):
+    farmerId: int
+
+class UnitResponse(UnitBase):
+    id: str
+    farmerId: int
+    createdAt: datetime
+    updatedAt: Optional[datetime]
+
+    class Config:
+        orm_mode = True
+
+class BatchBase(BaseModel):
+    batchName: str
+    isCompleted: Optional[bool] = False
+
+class BatchCreate(BatchBase):
+    farmerId: int
+
+class BatchResponse(BatchBase):
+    batchId: str
+    farmerId: int
+    createdAt: datetime
+    updatedAt: Optional[datetime]
+
+    class Config:
+        orm_mode = True
+
+
+class RecordBase(BaseModel):
+    batchId: str
+    unitId: str
+
+class RecordCreate(RecordBase):
+    farmerId: int
+
+class RecordResponse(RecordBase):
+    id: str
+    farmerId: int
+    unit: UnitResponse  # nested unit
+    dailyRecords: List["DailyRecordResponse"] = []
+    weightSamplings: List["WeightSamplingResponse"] = []
+    gradingAndSortings: List["GradingAndSortingResponse"] = []
+    harvests: List["HarvestFormResponse"] = []
+
+    class Config:
+        orm_mode = True
+
+
+class DailyRecordBase(BaseModel):
+    date: datetime
+    feedName: str
+    feedSize: str
+    feedQuantity: float
+    mortality: int
+    coins: Optional[int] = None
+
+class DailyRecordCreate(DailyRecordBase):
+    farmerId: int
+    batchId: str
+    unitId: str
+    recordId: str
+
+class DailyRecordResponse(DailyRecordBase):
+    recordId: str
+    farmerId: int
+    batchId: str
+    unitId: str
+    createdAt: datetime
+
+    class Config:
+        orm_mode = True
+
+class WeightSamplingBase(BaseModel):
+    sampleName: str
+    date: datetime
+    fishNumbers: int
+    totalWeight: float
+    completed: bool
+
+class WeightSamplingCreate(WeightSamplingBase):
+    farmerId: int
+    batchId: str
+    unitId: str
+    recordId: str
+
+class WeightSamplingResponse(WeightSamplingBase):
+    recordId: str
+    farmerId: int
+    batchId: str
+    unitId: str
+    createdAt: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class GradeBase(BaseModel):
+    destinationBatchId: Optional[str] = None
+    destinationBatchName: Optional[str] = None
+    destinationUnitId: str
+    destinationUnitName: str
+    averageFishWeight: float
+    fishTransferred: int
+
+class GradeCreate(GradeBase):
+    gradingAndSortingId: str
+
+class GradeResponse(GradeBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+class GradingAndSortingBase(BaseModel):
+    gradeWith: str
+    sampleName: str
+    date: datetime
+    gradingPondNumber: int
+    fishNumbers: int
+    totalWeight: float
+    completed: bool
+
+class GradingAndSortingCreate(GradingAndSortingBase):
+    farmerId: int
+    batchId: str
+    unitId: str
+    recordId: str
+
+class GradingAndSortingResponse(GradingAndSortingBase):
+    recordId: str
+    farmerId: int
+    batchId: str
+    unitId: str
+    createdAt: datetime
+    grades: List[GradeResponse] = []
+
+    class Config:
+        orm_mode = True
+
+class HarvestFormBase(BaseModel):
+    date: datetime
+    harvestedWeight: float
+    harvestedFish: int
+
+class HarvestFormCreate(HarvestFormBase):
+    farmerId: int
+    batchId: str
+    unitId: str
+    recordId: str
+
+class HarvestFormResponse(HarvestFormBase):
+    recordId: str
+    farmerId: int
+    batchId: str
+    unitId: str
+    createdAt: datetime
+
+    class Config:
+        orm_mode = True
 
 
 
