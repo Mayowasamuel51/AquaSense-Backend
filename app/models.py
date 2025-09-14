@@ -139,6 +139,15 @@ class UserVideoProgress(Base):
     earned_coins = Column(Integer, default=0)
 
 
+
+class UserTestAnswer(Base):
+    __tablename__ = "user_test_answers"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    test_id = Column(Integer, ForeignKey("tests.id"), nullable=False)  # matches Test.id
+    selected_option_id = Column(Integer, ForeignKey("options.id"), nullable=True)
+    answered_at = Column(DateTime, default=datetime.utcnow)
+
 class UserTestProgress(Base):
     __tablename__ = "user_test_progress"
     id = Column(Integer, primary_key=True, autoincrement=True)

@@ -190,7 +190,7 @@ class RegisterIn(BaseModel):
     first_name: str
     last_name: str
     gender: str
-    email: str
+    email: EmailStr
     phone: Optional[str] = None
     password: str
     access : Optional[str] = None

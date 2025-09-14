@@ -6,7 +6,7 @@ from uuid import uuid4
 # from ..schemas import UserLearning
 from typing import List
 from ..database  import get_db
-from ..models import User, Video, Test, Module, UserVideoProgress, UserTestProgress ,Option
+from ..models import User, Video, Test, Module, UserVideoProgress, UserTestProgress, Option, UserTestAnswer
 from ..dep.security import create_tokens , get_current_user
 from ..schemas import ModuleOut, AnswerTestIn
 
@@ -46,35 +46,98 @@ def watch_video(video_id: int, db: Session = Depends(get_db), user=Depends(get_c
 
 # ✅ Answer a test question
 @router.post("/tests/answer")
-def answer_test(body: AnswerTestIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def answer_test(body: AnswerTestIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     test = db.query(Test).filter(Test.id == body.test_id).first()
     if not test:
         raise HTTPException(404, "Test not found")
 
-    option = db.query(Option).filter(Option.id == body.option_id).first()
+    option = db.query(Option).filter(Option.id == body.option_id, Option.test_id == body.test_id).first()
     if not option:
-        raise HTTPException(404, "Option not found")
+        raise HTTPException(400, "Invalid option for this test")
 
-    is_correct = (test.correct_option_id == option.id)
+    is_correct = option.id == test.correct_option_id
 
     progress = db.query(UserTestProgress).filter_by(user_id=user.id, test_id=body.test_id).first()
     if not progress:
-        progress =UserTestProgress(user_id=user.id, test_id=body.test_id,
-                                           user_option_id=body.option_id, is_correct=is_correct)
+        progress = UserTestProgress(
+            user_id=user.id,
+            test_id=body.test_id,
+            selected_option_id=body.option_id,
+            is_correct=is_correct
+        )
         db.add(progress)
-        if is_correct:
-            user.coins += 50  # example coins for correct answer
     else:
-        progress.user_option_id = body.option_id
+        progress.selected_option_id = body.option_id
         progress.is_correct = is_correct
-        if is_correct:
-            user.coins += 50  # prevent double reward by checking history
+
+    if is_correct:
+        user.coins += 50
 
     db.commit()
-    return {"message": "Answer submitted", "is_correct": is_correct, "total_coins": user.coins}
+
+    return {
+        "message": "Answer submitted",
+        "testId": body.test_id,
+        "selectedOptionId": body.option_id,
+        "isCorrect": is_correct,
+        "total_coins": user.coins
+    }
 
 
+# class AnswerIn(BaseModel):
+#     testId: str
+#     selectedOptionId: str
+class AnswerIn(BaseModel):
+    testId: str
+    selectedOptionId: str
 
+@router.post("/answer")
+def submit_answer(
+    body: AnswerIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    # check that test exists
+    test = db.query(Test).filter(Test.id == body.testId).first()
+    if not test:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    # check option belongs to this test
+    option = db.query(Option).filter(
+    Option.id == body.selectedOptionId,
+        Option.test_id == body.testId
+    ).first()
+    if not option:
+        raise HTTPException(status_code=400, detail="Invalid option for this test")
+
+    # check if user already answered
+    existing_answer = db.query(UserTestAnswer).filter(
+        UserTestAnswer.user_id == user.id,
+        UserTestAnswer.test_id == body.testId
+    ).first()
+
+    if existing_answer:
+        # update existing answer
+        existing_answer.selected_option_id = body.selectedOptionId
+    else:
+        # create new answer
+        new_answer = UserTestAnswer(
+            user_id=user.id,
+            test_id=body.testId,
+            selected_option_id=body.selectedOptionId
+        )
+        db.add(new_answer)
+
+    db.commit()
+
+    is_correct = body.selectedOptionId == test.correct_option_id
+
+    return {
+        "message": "Answer submitted",
+        "testId": test.id,
+        "selectedOptionId": body.selectedOptionId,
+        "isCorrect": is_correct
+    }
 
 
 
