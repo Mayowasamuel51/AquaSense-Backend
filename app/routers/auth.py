@@ -126,7 +126,15 @@ EMAIL_HTML_TEMPLATE = """
             <p>Please verify your email address to complete your registration and activate your account.</p>
 
             <!-- ✅ Deep link button -->
-            <a href="{{ deep_link }}" class="button">Verify Email</a>
+            <a href="{{ deep_link }}"    style="display:inline-block;
+          padding:14px 28px;
+          margin:20px 0;
+          background-color:#276882;
+          color:#ffffff !important;
+          font-size:16px;
+          font-weight:bold;
+          text-decoration:none;
+          border-radius:6px;" class="button">Verify Email</a>
 
             <p>If the button doesn’t work, copy and paste this link into your browser:</p>
             <p><a href="{{ web_link }}">{{ web_link }}</a></p>
