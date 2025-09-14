@@ -50,7 +50,64 @@ class UserOut(UserBase):
     class Config:
         from_attributes = True
 
-#
+class OptionOut(BaseModel):
+    id: int
+    text: str
+
+    class Config:
+        from_attributes = True
+
+
+class TestOut(BaseModel):
+    id: int
+    question: str
+    options: List[OptionOut]
+
+    class Config:
+        from_attributes = True
+
+
+class VideoOut(BaseModel):
+    id: int
+    title: str
+    description: str
+    video_url: str
+    thumbnail_url: Optional[str]
+    coins: int
+    duration_in_seconds: int
+    is_watched: bool = False  # default
+
+    class Config:
+        from_attributes = True
+
+class ModuleOut(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    videos: List[VideoOut]
+    tests: List[TestOut]
+    total_coins: int
+    completion_bonus_coins: int
+
+    class Config:
+        from_attributes = True
+
+
+class AnswerTestIn(BaseModel):
+    test_id: int
+    option_id: int
+
+
+
+
+
+
+
+
+
+
+
+
 #
 # class UserBase(BaseModel):
 #     email: EmailStr

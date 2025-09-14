@@ -47,7 +47,9 @@ class User(Base):
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
     gender = Column(String(50), nullable=True)
+    coins = Column(Integer, default=0)
 
+    # ✅ Progress relationships
     justdata = relationship("JustData", back_populates="user", uselist=False)
     password_hash = Column(String(255), nullable=False)
     # roles = Column(JSON, default=["user"])  # stored as JSON array in MySQL
@@ -55,6 +57,10 @@ class User(Base):
     workers = relationship("Worker", back_populates="user")
     # relationship to tokens
     tokens = relationship("VerificationToken", back_populates="user")
+    # ✅ relationships
+    video_progress = relationship("UserVideoProgress", backref="user", cascade="all, delete-orphan")
+    test_progress = relationship("UserTestProgress", back_populates="user", cascade="all, delete-orphan")
+
 
 
 class VerificationToken(Base):
@@ -74,7 +80,82 @@ class Worker(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="workers")
 
-#
+
+class Module(Base):
+    __tablename__ = "modules"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    total_coins = Column(Integer, default=0)
+    completion_bonus_coins = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    videos = relationship("Video", back_populates="module", cascade="all, delete-orphan")
+    tests = relationship("Test", back_populates="module", cascade="all, delete-orphan")
+
+
+class Video(Base):
+    __tablename__ = "videos"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    module_id = Column(Integer, ForeignKey("modules.id"), nullable=False)
+    title = Column(String(255), nullable=False)
+    video_url = Column(String(500), nullable=False)
+    thumbnail_url = Column(String(500), nullable=True)
+    description = Column(String(800), nullable=True)
+    coins = Column(Integer, default=0)
+    duration_in_seconds = Column(Integer, nullable=True)
+
+    module = relationship("Module", back_populates="videos")
+
+
+class Test(Base):
+    __tablename__ = "tests"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    module_id = Column(Integer, ForeignKey("modules.id"), nullable=False)
+    question = Column(Text, nullable=False)
+    correct_option_id = Column(Integer, ForeignKey("options.id"), nullable=True)
+
+    module = relationship("Module", back_populates="tests")
+    options = relationship("Option", back_populates="test", cascade="all, delete-orphan",
+                           foreign_keys="Option.test_id")
+    progresses = relationship("UserTestProgress", back_populates="test", cascade="all, delete-orphan")
+
+
+class Option(Base):
+    __tablename__ = "options"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    test_id = Column(Integer, ForeignKey("tests.id"), nullable=False)
+    text = Column(String(255), nullable=False)
+
+    test = relationship("Test", back_populates="options", foreign_keys=[test_id])
+
+
+class UserVideoProgress(Base):
+    __tablename__ = "user_video_progress"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    video_id = Column(Integer, ForeignKey("videos.id"), nullable=False)
+    is_watched = Column(Boolean, default=False)
+    earned_coins = Column(Integer, default=0)
+
+
+class UserTestProgress(Base):
+    __tablename__ = "user_test_progress"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    test_id = Column(Integer, ForeignKey("tests.id"), nullable=False)
+
+    # ✅ FIXED: make this an INTEGER foreign key
+    selected_option_id = Column(Integer, ForeignKey("options.id"), nullable=True)
+
+    is_correct = Column(Boolean, nullable=True)
+    earned_coins = Column(Integer, default=0)
+
+    # ✅ relationships
+    user = relationship("User", back_populates="test_progress")
+    test = relationship("Test", back_populates="progresses")
+    selected_option = relationship("Option", foreign_keys=[selected_option_id])
+
 # class Learn(Base):
 #     __tablename__ = "learns"
 #     id = Column(Integer, primary_key=True, autoincrement=True)
