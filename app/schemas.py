@@ -106,8 +106,6 @@ class UnitBase(BaseModel):
     type: Optional[str] = None
     isActive: Optional[bool] = False
 
-class UnitCreate(UnitBase):
-    farmerId: int
 
 class UnitResponse(UnitBase):
     id: str
@@ -116,15 +114,25 @@ class UnitResponse(UnitBase):
     updatedAt: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+class UnitCreate(UnitBase):
+   pass
+   # message: str
+   # unit:UnitResponse
+
+   class Config:
+        from_attributes = True
+
 
 class BatchBase(BaseModel):
     batchName: str
+    fish_type: Optional[str] = None
+    number_of_fish: Optional[int] = None
     isCompleted: Optional[bool] = False
 
 class BatchCreate(BatchBase):
     farmerId: int
-
+    # pass
 class BatchResponse(BatchBase):
     batchId: str
     farmerId: int
@@ -132,8 +140,7 @@ class BatchResponse(BatchBase):
     updatedAt: Optional[datetime]
 
     class Config:
-        orm_mode = True
-
+        from_attributes = True
 
 class RecordBase(BaseModel):
     batchId: str
@@ -152,7 +159,7 @@ class RecordResponse(RecordBase):
     harvests: List["HarvestFormResponse"] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DailyRecordBase(BaseModel):
@@ -177,7 +184,7 @@ class DailyRecordResponse(DailyRecordBase):
     createdAt: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class WeightSamplingBase(BaseModel):
     sampleName: str
@@ -200,7 +207,7 @@ class WeightSamplingResponse(WeightSamplingBase):
     createdAt: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class GradeBase(BaseModel):
@@ -218,7 +225,7 @@ class GradeResponse(GradeBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class GradingAndSortingBase(BaseModel):
@@ -245,7 +252,7 @@ class GradingAndSortingResponse(GradingAndSortingBase):
     grades: List[GradeResponse] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class HarvestFormBase(BaseModel):
     date: datetime
@@ -266,7 +273,7 @@ class HarvestFormResponse(HarvestFormBase):
     createdAt: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 

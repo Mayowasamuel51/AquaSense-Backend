@@ -186,6 +186,8 @@ class Batch(Base):
     batchId = Column(String(50), primary_key=True, index=True)
     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
     batchName = Column(String(100), nullable=False)
+    fish_type = Column(String(100), nullable=False)
+    number_of_fish = Column(String(100), nullable=False)
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, default=None)
     isCompleted = Column(Boolean, default=False)
