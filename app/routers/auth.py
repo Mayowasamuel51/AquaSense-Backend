@@ -274,6 +274,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
             "kyc_status": user.kyc_status,
             "profilepicture":user.profilepicture,
             "nin": user.nin,
+            "coins":user.coins,
             "email_verified": user.email_verified
         }
     }
