@@ -301,18 +301,17 @@ class Product(Base):
     category = Column(String(250), nullable=False)
 
     # relationships
-    category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
-    category_obj = relationship("Category", back_populates="products")
+
     price_range = relationship("PriceRange", uselist=False,  back_populates="product")
     types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
 
-class Category(Base):
-    __tablename__ = "categories"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name = Column(String(250), unique=True, nullable=False)
-
-    # Relationship back to products
-    products = relationship("Product", back_populates="category_obj")
+# class Category(Base):
+#     __tablename__ = "categories"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     name = Column(String(250), unique=True, nullable=False)
+#
+#     # Relationship back to products
+#     products = relationship("Product", back_populates="category_obj")
 
 class PriceRange(Base):
     __tablename__ = "price_ranges"

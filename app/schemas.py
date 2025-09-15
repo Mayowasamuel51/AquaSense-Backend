@@ -308,14 +308,14 @@ class ProductCreate(BaseModel):
     image: Optional[str]
     price: float
     category: str
-    category_id: int  # 👈 reference by ID now
+
     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
     types: Optional[List[ProductTypeBase]] = []   # 👈 optional with default empty list
 
 #
 class ProductOut(ProductCreate):
     id: int
-    category: CategoryOut  # 👈 include full category object
+
     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
 
     model_config = dict(
