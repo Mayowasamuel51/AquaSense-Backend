@@ -7,7 +7,7 @@ from .config import settings
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from .routers import health, auth , myfarm , profileupdate , learning , recording, batch , units ,products
+from .routers import health,auth,myfarm , profileupdate , learning ,categories,  batch , units ,products
 # expenses , profileupdate, myfarm, ponds)   # 👈 import your auth router
 from .database import engine
 from . import models
@@ -89,4 +89,5 @@ app.include_router(profileupdate.router, prefix="/api/v1")
 app.include_router(myfarm.router, prefix="/api/v1")
 app.include_router(batch.router, prefix="/api/v1")
 app.include_router(units.router, prefix="/api/v1")
+app.include_router(categories.router, prefix="/api/v1")
 # app.run_server(debug=True, port=8050, host='0.0.0.0')
