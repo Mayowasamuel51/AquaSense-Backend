@@ -23,14 +23,11 @@ from typing import List
 from ..dep.security import create_tokens , get_current_user
 
 router = APIRouter(prefix="/products", tags=["products"])
-
 @router.post("/", response_model=ProductOut)
 def create_product(product: ProductCreate, db: Session = Depends(get_db)):
-    # Optional: check duplicate by title
     existing = db.query(Product).filter(Product.title == product.title).first()
     if existing:
         raise HTTPException(status_code=400, detail="Product already exists")
-    # Create main product
     db_product = Product(
         title=product.title,
         description=product.description,
@@ -42,18 +39,19 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_product)
 
-    # Create price range and attach to product
-    price_range = PriceRange(
-        from_=product.priceRange.from_,
-        to=product.priceRange.to,
-    )
-    db_product.price_range = price_range  # 👈 attach directly
-    db.add(price_range)
-    db.commit()
-    db.refresh(db_product)
+    # ✅ create price range only if provided
+    if product.priceRange:
+        price_range = PriceRange(
+            from_=product.priceRange.from_,
+            to=product.priceRange.to,
+            product=db_product,  # ✅ safer way to attach
+        )
+        db.add(price_range)
+        db.commit()
+        db.refresh(db_product)
 
-    # Create types (if any)
-    for t in product.types:
+    # ✅ create product types
+    for t in product.types or []:
         db_type = ProductType(
             typeValue=t.typeValue,
             valueMeasurement=t.valueMeasurement,
@@ -67,7 +65,6 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.refresh(db_product)
 
     return db_product
-
 
 
 # ✅ Fetch all products

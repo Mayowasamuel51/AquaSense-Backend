@@ -277,25 +277,12 @@ class HarvestFormResponse(HarvestFormBase):
 
 
 
-
-
-# class PriceRange(BaseModel):
-#     from_: float
-#     to: float
-#
-#     class Config:
-#         fields = {"from_": "from"}
-
-
 class PriceRangeBase(BaseModel):
     from_: float = Field(..., alias="from")
     to: float
-
     class Config:
         from_attributes = True
-
-        model_config = ConfigDict(validate_by_name=True)
-
+        validate_by_name = True  #
 
 class ProductTypeBase(BaseModel):
     typeValue: float
@@ -313,18 +300,30 @@ class ProductCreate(BaseModel):
     image: Optional[str]
     price: float
     category: str
-    # priceRange: PriceRangeBase
-    priceRange: Optional[PriceRangeBase] = None
+    priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
     types: Optional[List[ProductTypeBase]] = []   # 👈 optional with default empty list
 
-
+#
 class ProductOut(ProductCreate):
     id: int
-    class Config:
-        from_attributes = True
-        fields = {
-            "price_range": "priceRange"
-        }
+    priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
+
+    model_config = dict(
+        from_attributes=True,
+        validate_by_name=True
+    )
+# class ProductOut(ProductCreate):
+#     id: int
+#     priceRange:PriceRangeBase
+#     model_config = dict(
+#         from_attributes=True,
+#         validate_by_name=True
+#     )
+    # class Config:
+    #     from_attributes = True
+    #     fields = {
+    #         "priceRange": "price_range"
+    #     }
 
 
 class CartItem(BaseModel):
