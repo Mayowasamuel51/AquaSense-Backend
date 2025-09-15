@@ -59,7 +59,6 @@ def get_user_batches(user_id: int,   user: User = Depends(get_current_user), db:
     batches = db.query(Batch).filter(Batch.farmerId == user_id).all()
     return batches
 
-
 @router.get("/batches/{batch_id}", response_model=BatchResponse)
 def get_batch(batch_id: str,   user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user.id).first()

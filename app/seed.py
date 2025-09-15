@@ -55,7 +55,12 @@ print("✅ Seed data inserted successfully!")
 
 
 
-BATCH ----- UNITS  ---- RECORD ----- OTHER
+# BATCH ----- UNITS  ---- RECORD ----- OTHER
+
+
+# 1 question 10 coins
+
+#  makig network stuff
 
 
 

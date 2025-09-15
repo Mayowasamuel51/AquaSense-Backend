@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional ,List
 
 class WorkerBase(BaseModel):
@@ -278,6 +278,66 @@ class HarvestFormResponse(HarvestFormBase):
 
 
 
+
+# class PriceRange(BaseModel):
+#     from_: float
+#     to: float
+#
+#     class Config:
+#         fields = {"from_": "from"}
+
+
+class PriceRangeBase(BaseModel):
+    from_: float = Field(..., alias="from")
+    to: float
+
+    class Config:
+        from_attributes = True
+
+        model_config = ConfigDict(validate_by_name=True)
+
+
+class ProductTypeBase(BaseModel):
+    typeValue: float
+    valueMeasurement: str
+    valuePrice: float
+    quantity: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class ProductCreate(BaseModel):
+    title: str
+    description: Optional[str]
+    image: Optional[str]
+    price: float
+    category: str
+    # priceRange: PriceRangeBase
+    priceRange: Optional[PriceRangeBase] = None
+    types: Optional[List[ProductTypeBase]] = []   # 👈 optional with default empty list
+
+
+class ProductOut(ProductCreate):
+    id: int
+    class Config:
+        from_attributes = True
+        fields = {
+            "price_range": "priceRange"
+        }
+
+
+class CartItem(BaseModel):
+    product_id: str
+    quantity: int
+
+class CartOut(BaseModel):
+    product: ProductOut
+    quantity: int
+    total_price: float
+
+    class Config:
+        from_attributes = True
 
 
 

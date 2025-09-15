@@ -1,3 +1,5 @@
+from numbers import Integral
+
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, Numeric, Date, Text, Float
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
@@ -64,7 +66,6 @@ class User(Base):
     units = relationship("Unit", back_populates="farmer")
     batches = relationship("Batch", back_populates="farmer")
     records = relationship("Record", back_populates="farmer")
-
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
@@ -160,8 +161,6 @@ class UserTestProgress(Base):
     test = relationship("Test", back_populates="progresses")
     selected_option = relationship("Option", foreign_keys=[selected_option_id])
 
-
-
 class Unit(Base):
     __tablename__ = "units"
 
@@ -211,7 +210,6 @@ class Record(Base):
     weightSamplings = relationship("WeightSampling", back_populates="record")
     gradingAndSortings = relationship("GradingAndSorting", back_populates="record")
     harvests = relationship("HarvestForm", back_populates="record")
-
 
 class DailyRecord(Base):
     __tablename__ = "daily_records"
@@ -277,7 +275,6 @@ class GradingAndSorting(Base):
     record = relationship("Record", back_populates="gradingAndSortings")
     grades = relationship("Grade", backref="gradingAndSorting")
 
-
 class HarvestForm(Base):
     __tablename__ = "harvests"
 
@@ -294,11 +291,46 @@ class HarvestForm(Base):
 
 
 
+class Product(Base):
+    __tablename__ = "products"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String(250), nullable=False)
+    description = Column(String(250), nullable=True)
+    image = Column(String(250), nullable=True)
+    price = Column(Float, nullable=False)
+    category = Column(String(250), nullable=False)
+
+    # relationships
+    price_range = relationship("PriceRange", uselist=False,  back_populates="product")
+    types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
 
 
+class PriceRange(Base):
+    __tablename__ = "price_ranges"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    from_ = Column("from", Float, nullable=False)
+    to = Column(Float, nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    product = relationship("Product", back_populates="price_range")
 
 
+class ProductType(Base):
+    __tablename__ = "product_types"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    typeValue = Column(Float, nullable=False)
+    valueMeasurement = Column(String(250), nullable=False)
+    valuePrice = Column(Float, nullable=False)
+    quantity = Column(Integer, default=0)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    product = relationship("Product", back_populates="types")
 
+class Cart(Base):
+    __tablename__ = "cart"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    quantity = Column(Integer, nullable=False)
+
+    product = relationship("Product")
 
 
 
