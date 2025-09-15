@@ -34,7 +34,7 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 #     return db_category
 
 
-@router.get("/{name}", response_model=List[ProductOut])
+@router.get("/{category}", response_model=List[ProductOut])
 def get_categories(category: str, db: Session = Depends(get_db)):
     products = db.query(Product).filter(Product.category == category).all()
     if not products:
