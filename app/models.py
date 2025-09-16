@@ -225,7 +225,6 @@ class DailyRecord(Base):
     mortality = Column(Integer, nullable=False)
     coins = Column(Integer, default=None)
     createdAt = Column(DateTime, default=datetime.utcnow)
-
     record = relationship("Record", back_populates="dailyRecords")
 
 class WeightSampling(Base):
@@ -339,13 +338,6 @@ class Cart(Base):
     quantity = Column(Integer, nullable=False)
 
     product = relationship("Product")
-
-
-
-
-
-
-
 
 
 

@@ -23,6 +23,8 @@ class FarmBase(BaseModel):
     farmname: str | None = None
     area: str | None = None
 
+
+
 @router.post("/")
 def create_or_update_farm(
     body: FarmBase,

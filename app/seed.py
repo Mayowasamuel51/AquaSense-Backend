@@ -55,7 +55,7 @@ print("✅ Seed data inserted successfully!")
 
 
 
-# BATCH ----- UNITS  ---- RECORD ----- OTHER
+# BATCH ----- UNITS  ---- RECORD ----- OTHER INFO WILL FOLLOW
 
 
 # 1 question 10 coins
