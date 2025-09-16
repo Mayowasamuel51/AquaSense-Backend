@@ -171,16 +171,19 @@ class DailyRecordBase(BaseModel):
     coins: Optional[int] = None
 
 class DailyRecordCreate(DailyRecordBase):
-    farmerId: int
-    batchId: str
-    unitId: str
-    recordId: str
+    feedName: str
+    feedSize: str
+    feedQuantity: float
+    mortality: int
+    date: datetime
 
 class DailyRecordResponse(DailyRecordBase):
-    recordId: str
+    id: str
     farmerId: int
     batchId: str
     unitId: str
+    recordId: str
+    coins: Optional[int]
     createdAt: datetime
 
     class Config:
