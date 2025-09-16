@@ -34,25 +34,33 @@ def create_daily_record(
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    # ✅ Check record exists & belongs to user
-    record = db.query(Record).filter(Record.id == daily_record.record_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Record not found")
-    if record.farmerId != user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to add to this record")
+        # 1. Find the active record (farmer + batch + unit)
+    record = (
+        db.query(Record)
+        .filter(Record.farmerId == user.id)
+        .order_by(Record.createdAt.desc())  # 👈 or however you decide "active"
+        .first()
+    )
 
+    if not record:
+        raise HTTPException(status_code=404, detail="No active record found for this farmer")
+
+    # 2. Create DailyRecord
     db_daily = DailyRecord(
         id=str(uuid.uuid4()),
-        record_id=daily_record.record_id,
+        recordId=record.id,
+        farmerId=user.id,
+        batchId=record.batchId,
+        unitId=record.unitId,
         feedName=daily_record.feedName,
         feedSize=daily_record.feedSize,
         feedQuantity=daily_record.feedQuantity,
         mortality=daily_record.mortality,
-        coins=10,  # example reward logic
+        date=daily_record.date,
+        coins=10,
     )
     db.add(db_daily)
     db.commit()
     db.refresh(db_daily)
 
     return db_daily
-
