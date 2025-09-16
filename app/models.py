@@ -202,6 +202,8 @@ class Record(Base):
     batchId = Column(String(50), ForeignKey("batches.batchId"))
     unitId = Column(String(50), ForeignKey("units.id"))
 
+    createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     unit = relationship("Unit", back_populates="records")
     batch = relationship("Batch", back_populates="records")
     farmer = relationship("User", back_populates="records")
@@ -214,18 +216,25 @@ class Record(Base):
 class DailyRecord(Base):
     __tablename__ = "daily_records"
 
-    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+    id = Column(String(50), primary_key=True, index=True)   # PK UUID
+    recordId = Column(String(50), ForeignKey("records.id")) # FK to records
     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
     batchId = Column(String(50), ForeignKey("batches.batchId"))
     unitId = Column(String(50), ForeignKey("units.id"))
+
     date = Column(DateTime, nullable=False)
     feedName = Column(String(100), nullable=False)
     feedSize = Column(String(50), nullable=False)
     feedQuantity = Column(Float, nullable=False)
     mortality = Column(Integer, nullable=False)
     coins = Column(Integer, default=None)
-    createdAt = Column(DateTime, default=datetime.utcnow)
+
+    createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
     record = relationship("Record", back_populates="dailyRecords")
+
 
 class WeightSampling(Base):
     __tablename__ = "weight_samplings"

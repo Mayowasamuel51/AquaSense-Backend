@@ -24,7 +24,22 @@ from ..dep.security import create_tokens , get_current_user
 router = APIRouter(prefix="/units", tags=["units"])
 
 
-@router.post("/units", response_model=UnitResponse)
+# ✅ Get all units for the logged-in farmer
+@router.get("/", response_model=list[UnitResponse])
+def get_units(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    units = db.query(Unit).filter(Unit.farmerId == user.id).all()
+    return units
+
+
+# ✅ Get a single unit by ID
+@router.get("/{unit_id}", response_model=UnitResponse)
+def get_unit(unit_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    unit = db.query(Unit).filter(Unit.id == unit_id, Unit.farmerId == user.id).first()
+    if not unit:
+        raise HTTPException(status_code=404, detail="Unit not found")
+    return unit
+
+@router.post("/", response_model=UnitResponse)
 def create_unit(
     unit: UnitCreate,
     user: User = Depends(get_current_user),

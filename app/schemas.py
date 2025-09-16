@@ -152,6 +152,8 @@ class RecordCreate(RecordBase):
 class RecordResponse(RecordBase):
     id: str
     farmerId: int
+    createdAt: datetime
+    updatedAt: Optional[datetime]
     unit: UnitResponse  # nested unit
     dailyRecords: List["DailyRecordResponse"] = []
     weightSamplings: List["WeightSamplingResponse"] = []
@@ -176,7 +178,16 @@ class DailyRecordCreate(DailyRecordBase):
     feedQuantity: float
     mortality: int
     date: datetime
-
+    # batchId: str  # ✅ required so we know where to attach the record
+    # unitId: str  # ✅ required so we know which pond/cage
+    # feedName: str
+    # feedSize: str
+    # feedQuantity: float
+    # mortality: int
+    # date: datetime
+    # batchId: str   # required so we know where to attach the record
+    # unitId: str    # required so we know which pond/cage
+#
 class DailyRecordResponse(DailyRecordBase):
     id: str
     farmerId: int
@@ -185,9 +196,11 @@ class DailyRecordResponse(DailyRecordBase):
     recordId: str
     coins: Optional[int]
     createdAt: datetime
+    updatedAt:datetime
 
     class Config:
         from_attributes = True
+
 
 class WeightSamplingBase(BaseModel):
     sampleName: str
