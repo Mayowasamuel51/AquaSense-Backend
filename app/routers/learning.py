@@ -86,59 +86,73 @@ def answer_test(body: AnswerTestIn, db: Session = Depends(get_db), user: User = 
 
 # class AnswerIn(BaseModel):
 #     testId: str
+# #     selectedOptionId: str
+# class AnswerIn(BaseModel):
+#     testId: str
 #     selectedOptionId: str
-class AnswerIn(BaseModel):
-    testId: str
-    selectedOptionId: str
+class AnswerRequest(BaseModel):
+    test_id: int
+    selected_option_id: int
 
-@router.post("/answer")
-def submit_answer(
-    body: AnswerIn,
+class AnswerResponse(BaseModel):
+    is_correct: bool
+    earned_coins: int
+    total_user_coins: int
+
+@router.post("/answer", response_model=AnswerResponse)
+def answer_question(
+    body: AnswerRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    # check that test exists
-    test = db.query(Test).filter(Test.id == body.testId).first()
+    # 1️⃣ Fetch the test
+    test = db.query(Test).filter(Test.id == body.test_id).first()
     if not test:
         raise HTTPException(status_code=404, detail="Test not found")
 
-    # check option belongs to this test
-    option = db.query(Option).filter(
-    Option.id == body.selectedOptionId,
-        Option.test_id == body.testId
-    ).first()
+    # 2️⃣ Fetch the selected option
+    option = db.query(Option).filter(Option.id == body.selected_option_id, Option.test_id == test.id).first()
     if not option:
         raise HTTPException(status_code=400, detail="Invalid option for this test")
 
-    # check if user already answered
-    existing_answer = db.query(UserTestAnswer).filter(
-        UserTestAnswer.user_id == user.id,
-        UserTestAnswer.test_id == body.testId
+    # 3️⃣ Check correctness
+    is_correct = (option.id == test.correct_option_id)
+    earned = test.coins if is_correct else 0
+
+    # 4️⃣ Save progress (avoid duplicate submissions)
+    existing = db.query(UserTestProgress).filter_by(
+        user_id=current_user.id, test_id=test.id
     ).first()
 
-    if existing_answer:
-        # update existing answer
-        existing_answer.selected_option_id = body.selectedOptionId
-    else:
-        # create new answer
-        new_answer = UserTestAnswer(
-            user_id=user.id,
-            test_id=body.testId,
-            selected_option_id=body.selectedOptionId
+    if existing:
+        # already answered → don’t double-reward
+        return AnswerResponse(
+            is_correct=existing.is_correct,
+            earned_coins=existing.earned_coins,
+            total_user_coins=current_user.coins
         )
-        db.add(new_answer)
+
+    progress = UserTestProgress(
+        user_id=current_user.id,
+        test_id=test.id,
+        selected_option_id=option.id,
+        is_correct=is_correct,
+        earned_coins=earned
+    )
+    db.add(progress)
+
+    # 5️⃣ Update user coins if correct
+    if is_correct:
+        current_user.coins += earned
 
     db.commit()
+    db.refresh(current_user)
 
-    is_correct = body.selectedOptionId == test.correct_option_id
-
-    return {
-        "message": "Answer submitted",
-        "testId": test.id,
-        "selectedOptionId": body.selectedOptionId,
-        "isCorrect": is_correct
-    }
-
+    return AnswerResponse(
+        is_correct=is_correct,
+        earned_coins=earned,
+        total_user_coins=current_user.coins
+    )
 
 
 

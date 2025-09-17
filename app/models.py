@@ -114,6 +114,8 @@ class Test(Base):
     module_id = Column(Integer, ForeignKey("modules.id"), nullable=False)
     question = Column(Text, nullable=False)
     correct_option_id = Column(Integer, ForeignKey("options.id"), nullable=True)
+    coins = Column(Integer, default=10)
+
 
     module = relationship("Module", back_populates="tests")
     options = relationship("Option", back_populates="test", cascade="all, delete-orphan",
