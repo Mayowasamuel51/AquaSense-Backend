@@ -24,6 +24,7 @@ class Farm(Base):
     city = Column(String(100), nullable=True)
     state = Column(String(100), nullable=True)
     farmname = Column(String(255), nullable=True)
+    farmtype = Column(String(255), nullable=True)
     area = Column(String(100), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id") ,  unique=True)
     # links to User

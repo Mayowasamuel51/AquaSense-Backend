@@ -21,6 +21,7 @@ class FarmBase(BaseModel):
     city: str | None = None
     state: str | None = None
     farmname: str | None = None
+    farmtype :str| None = None
     area: str | None = None
 
 
@@ -45,6 +46,8 @@ def create_or_update_farm(
         existing_farm.state = body.state
         existing_farm.farmname = body.farmname
         existing_farm.area = body.area
+        existing_farmtype = body.farmtype
+
 
         db.commit()
         db.refresh(existing_farm)
@@ -64,6 +67,7 @@ def create_or_update_farm(
             city=body.city,
             state=body.state,
             farmname=body.farmname,
+            farmtype= body.farmtype,
             area=body.area,
             owner_id=user.id
         )
@@ -75,7 +79,9 @@ def create_or_update_farm(
             "message": "You have created your farm successfully",
             "id": new_farm.id,
             "farmname": new_farm.farmname,
-            "owner_id": new_farm.owner_id
+            "owner_id": new_farm.owner_id,
+            "data":new_farm
+
         }
 
 
