@@ -43,45 +43,45 @@ def watch_video(video_id: int, db: Session = Depends(get_db), user=Depends(get_c
     db.commit()
     return {"message": "Video marked as watched", "earned": video.coins, "total_coins": user.coins}
 
-
-# ✅ Answer a test question
-@router.post("/tests/answer")
-def answer_test(body: AnswerTestIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    test = db.query(Test).filter(Test.id == body.test_id).first()
-    if not test:
-        raise HTTPException(404, "Test not found")
-
-    option = db.query(Option).filter(Option.id == body.option_id, Option.test_id == body.test_id).first()
-    if not option:
-        raise HTTPException(400, "Invalid option for this test")
-
-    is_correct = option.id == test.correct_option_id
-
-    progress = db.query(UserTestProgress).filter_by(user_id=user.id, test_id=body.test_id).first()
-    if not progress:
-        progress = UserTestProgress(
-            user_id=user.id,
-            test_id=body.test_id,
-            selected_option_id=body.option_id,
-            is_correct=is_correct
-        )
-        db.add(progress)
-    else:
-        progress.selected_option_id = body.option_id
-        progress.is_correct = is_correct
-
-    if is_correct:
-        user.coins += 50
-
-    db.commit()
-
-    return {
-        "message": "Answer submitted",
-        "testId": body.test_id,
-        "selectedOptionId": body.option_id,
-        "isCorrect": is_correct,
-        "total_coins": user.coins
-    }
+#
+# # ✅ Answer a test question
+# @router.post("/tests/answer")
+# def answer_test(body: AnswerTestIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+#     test = db.query(Test).filter(Test.id == body.test_id).first()
+#     if not test:
+#         raise HTTPException(404, "Test not found")
+#
+#     option = db.query(Option).filter(Option.id == body.option_id, Option.test_id == body.test_id).first()
+#     if not option:
+#         raise HTTPException(400, "Invalid option for this test")
+#
+#     is_correct = option.id == test.correct_option_id
+#
+#     progress = db.query(UserTestProgress).filter_by(user_id=user.id, test_id=body.test_id).first()
+#     if not progress:
+#         progress = UserTestProgress(
+#             user_id=user.id,
+#             test_id=body.test_id,
+#             selected_option_id=body.option_id,
+#             is_correct=is_correct
+#         )
+#         db.add(progress)
+#     else:
+#         progress.selected_option_id = body.option_id
+#         progress.is_correct = is_correct
+#
+#     if is_correct:
+#         user.coins += 50
+#
+#     db.commit()
+#
+#     return {
+#         "message": "Answer submitted",
+#         "testId": body.test_id,
+#         "selectedOptionId": body.option_id,
+#         "isCorrect": is_correct,
+#         "total_coins": user.coins
+#     }
 
 
 # class AnswerIn(BaseModel):
@@ -90,6 +90,57 @@ def answer_test(body: AnswerTestIn, db: Session = Depends(get_db), user: User = 
 # class AnswerIn(BaseModel):
 #     testId: str
 #     selectedOptionId: str
+
+
+@router.get("/progress")
+def get_user_progress(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # --- User total coins ---
+    total_coins = user.coins
+
+    # --- Count modules ---
+    total_modules = db.query(Module).count()
+
+    # --- Videos watched ---
+    videos_watched = db.query(UserVideoProgress).filter_by(user_id=user.id, is_watched=True).count()
+
+    # --- Tests answered ---
+    tests_answered = db.query(UserTestProgress).filter_by(user_id=user.id).count()
+    tests_correct = db.query(UserTestProgress).filter_by(user_id=user.id, is_correct=True).count()
+
+    # --- Completed modules (all tests + video watched) ---
+    completed_modules = 0
+    modules = db.query(Module).all()
+    for module in modules:
+        videos = [v.id for v in module.videos]
+        tests = [t.id for t in module.tests]
+
+        watched_all = db.query(UserVideoProgress).filter(
+            UserVideoProgress.user_id == user.id,
+            UserVideoProgress.video_id.in_(videos),
+            UserVideoProgress.is_watched == True
+        ).count() == len(videos)
+
+        answered_all = db.query(UserTestProgress).filter(
+            UserTestProgress.user_id == user.id,
+            UserTestProgress.test_id.in_(tests)
+        ).count() == len(tests)
+
+        if watched_all and answered_all:
+            completed_modules += 1
+
+    return {
+        "user_id": user.id,
+        "coins": total_coins,
+        "total_modules": total_modules,
+        "completed_modules": completed_modules,
+        "videos_watched": videos_watched,
+        "tests_answered": tests_answered,
+        "tests_correct": tests_correct,
+    }
+
 class AnswerRequest(BaseModel):
     test_id: int
     selected_option_id: int
