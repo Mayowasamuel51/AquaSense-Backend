@@ -251,23 +251,29 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
 
 @router.get("/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
-    vt = db.query(VerificationToken).filter(VerificationToken.token == token).first()
+    # Find the verification token
+    vt = db.query(VerificationToken).filter(
+        VerificationToken.token == token
+    ).one_or_none()
+
     if not vt:
         raise HTTPException(400, "Invalid token")
-    if vt.expires_at < datetime.utcnow():
-        raise HTTPException(400, "Token expired")
 
-    # ✅ Fetch the correct user
-    user = db.query(User).filter(User.id == vt.user_id).first()
+    # ✅ Fetch the user tied to this token
+    user = db.query(User).filter(User.id == vt.user_id).one_or_none()
     if not user:
         raise HTTPException(400, "User not found")
 
-    user.email_verified = True
-    db.delete(vt)  # remove token after use
-    db.commit()
+    # Mark user as verified
+    if not user.email_verified:
+        user.email_verified = True
+        db.commit()
 
     return {
-        "message": "Email verified successfully!",
+        "message": (
+            "Email verified successfully!"
+            if user.email_verified else "User already verified!"
+        ),
         "data": {
             "id": user.id,
             "email": user.email,
@@ -280,8 +286,43 @@ def verify_email(token: str, db: Session = Depends(get_db)):
             "nin": user.nin,
             "coins": user.coins,
             "email_verified": user.email_verified,
+            "token": vt.token,   # keep token in response for the mobile app
         },
     }
+
+# @router.get("/verify")
+# def verify_email(token: str, db: Session = Depends(get_db)):
+#     vt = db.query(VerificationToken).filter(VerificationToken.token == token).first()
+#     if not vt:
+#         raise HTTPException(400, "Invalid token")
+#     if vt.expires_at < datetime.utcnow():
+#         raise HTTPException(400, "Token expired")
+#
+#     # ✅ Fetch the correct user
+#     user = db.query(User).filter(User.id == vt.user_id).first()
+#     if not user:
+#         raise HTTPException(400, "User not found")
+#
+#     user.email_verified = True
+#     db.delete(vt)  # remove token after use
+#     db.commit()
+#
+#     return {
+#         "message": "Email verified successfully!",
+#         "data": {
+#             "id": user.id,
+#             "email": user.email,
+#             "first_name": user.first_name,
+#             "last_name": user.last_name,
+#             "phone": user.phone,
+#             "gender": user.gender,
+#             "kyc_status": user.kyc_status,
+#             "profilepicture": user.profilepicture,
+#             "nin": user.nin,
+#             "coins": user.coins,
+#             "email_verified": user.email_verified,
+#         },
+#     }
 
 
 @router.get("/allusers", response_model=List[UserOut])
