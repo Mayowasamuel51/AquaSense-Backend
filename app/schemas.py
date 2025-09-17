@@ -22,7 +22,7 @@ class FarmBase(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     farmname: Optional[str] = None
-
+    farmtype:Optional[str] = None
     area: Optional[str] = None
 
 class FarmOut(FarmBase):
