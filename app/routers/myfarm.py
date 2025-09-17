@@ -47,13 +47,14 @@ def create_or_update_farm(
         existing_farm.farmname = body.farmname
         existing_farm.area = body.area
         existing_farm.farmtype = body.farmtype
+
         db.commit()
         db.refresh(existing_farm)
 
         return {
             "message": "Your farm has been updated successfully",
             "id": existing_farm.id,
-            "user":user,
+            "user":db_user,
             "farmname": existing_farm.farmname,
             "owner_id": existing_farm.owner_id
         }
@@ -78,6 +79,8 @@ def create_or_update_farm(
             "message": "You have created your farm successfully",
             "id": new_farm.id,
             "farmname": new_farm.farmname,
+            "user": db_user,
+            "farmname": existing_farm.farmname,
             "owner_id": new_farm.owner_id,
             "data":new_farm
 
