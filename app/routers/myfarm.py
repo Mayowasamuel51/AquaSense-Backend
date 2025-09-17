@@ -46,7 +46,7 @@ def create_or_update_farm(
         existing_farm.state = body.state
         existing_farm.farmname = body.farmname
         existing_farm.area = body.area
-        existing_farmtype = body.farmtype
+        existing_farm.farmtype = body.farmtype
 
 
         db.commit()
