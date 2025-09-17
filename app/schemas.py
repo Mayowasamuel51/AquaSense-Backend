@@ -22,6 +22,7 @@ class FarmBase(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     farmname: Optional[str] = None
+
     area: Optional[str] = None
 
 class FarmOut(FarmBase):
@@ -45,6 +46,7 @@ class UserCreate(UserBase):
 
 class UserOut(UserBase):
     id: int
+    email:str
     farm: Optional[FarmOut]
     workers: List[WorkerOut] = []
     class Config:

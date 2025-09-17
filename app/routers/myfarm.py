@@ -25,8 +25,22 @@ class FarmBase(BaseModel):
     area: str | None = None
 
 
+class FarmOut(BaseModel):
+    id: int
+    farmname: str
+    farmtype: str
+    owner_id: int
 
-@router.post("/")
+    class Config:
+        from_attributes = True
+
+class FarmResponse(BaseModel):
+    message: str
+    farm: FarmOut
+    user: UserOut
+
+
+@router.post("/", response_model=FarmResponse)
 def create_or_update_farm(
     body: FarmBase,
     user: User = Depends(get_current_user),
@@ -52,12 +66,18 @@ def create_or_update_farm(
         db.refresh(existing_farm)
 
         return {
-            "message": "Your farm has been updated successfully",
-            "id": existing_farm.id,
-            "user":db_user,
-            "farmname": existing_farm.farmname,
-            "owner_id": existing_farm.owner_id
+            "message": "You have created your farm successfully",
+            "farm": existing_farm,
+            "user": db_user
         }
+        # return {
+        #     "message": "Your farm has been updated successfully",
+        #     "id": existing_farm.id,
+        #     "farmname": existing_farm.farmname,
+        #     "user":db_user,
+        #     "farmtpye": existing_farm.farmtype,
+        #     "owner_id": existing_farm.owner_id
+        # }
     else:
         # ✅ Create new farm
         new_farm = Farm(
@@ -75,16 +95,14 @@ def create_or_update_farm(
         db.commit()
         db.refresh(new_farm)
 
+
         return {
             "message": "You have created your farm successfully",
-            "id": new_farm.id,
-            "farmname": new_farm.farmname,
-            "user": db_user,
-            "farmname": existing_farm.farmname,
-            "owner_id": new_farm.owner_id,
-            "data":new_farm
-
+            "farm": new_farm,
+            "user": db_user
         }
+
+
 
 
 # @router.get('/')
