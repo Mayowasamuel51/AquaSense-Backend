@@ -234,7 +234,6 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     db_token = VerificationToken(
         token=token,
         user_id=u.id,
-        expires_at=datetime.utcnow() + timedelta(minutes=30)
     )
 
 
