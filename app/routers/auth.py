@@ -408,7 +408,7 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
         raise HTTPException(401, "Invalid email or password")
 
     # 3. Check email verified
-    if not user.email_verified:
+    if not user.emailverified:
         raise HTTPException(403, "Please verify your email before logging in")
 
     # 4. Create tokens
