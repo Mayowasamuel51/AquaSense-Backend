@@ -204,6 +204,23 @@ class RegisterIn(BaseModel):
     access : Optional[str] = None
 
 
+class FarmOut(BaseModel):
+    id: int
+    farmname: str
+    farmtype: str
+    owner_id: int
+
+    class Config:
+        from_attributes = True
+
+class UserOutResponse(BaseModel):
+    message: str
+    farm: FarmOut
+    user: UserOut
+
+
+
+
 @router.post("/register")
 def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if body.email and db.query(User).filter(User.email == body.email).first():
@@ -323,7 +340,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 #             "email_verified": user.email_verified,
 #         },
 #     }
-@router.post("/resend-verification")
+@router.post("/resend-verification", response_model=UserOutResponse)
 def resend_verification_email(
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
