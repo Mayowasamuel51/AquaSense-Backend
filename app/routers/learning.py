@@ -16,12 +16,15 @@ router = APIRouter(
      tags=["learning"],)
 
 
+class ModulesResponse(BaseModel):
+    data:list[ModuleOut]
+
 
 # ✅ Get all modules with videos + tests
-@router.get("/", response_model=list[ModuleOut])
+@router.get("/", response_model=ModulesResponse)
 def get_modules(db: Session = Depends(get_db)):
-    return db.query(Module).all()
-
+    modules = db.query(Module).all()
+    return {"data": modules}  # 👈 returns a DICT, not a list
 
 # ✅ Mark video as watched
 @router.post("/videos/{video_id}/watch")

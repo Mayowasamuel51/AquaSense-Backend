@@ -138,7 +138,10 @@ class BatchCreate(BatchBase):
 class BatchResponse(BatchBase):
     batchId: str
     farmerId: int
-    createdAt: datetime
+    fish_type:Optional[str] = None
+    number_of_fish:Optional[str] = None
+    isCompleted:Optional[str] = None
+    createdAt:Optional[datetime]
     updatedAt: Optional[datetime]
 
     class Config:
