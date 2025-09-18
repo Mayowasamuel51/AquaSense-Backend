@@ -351,7 +351,7 @@ def resend_verification_email(
         raise HTTPException(status_code=404, detail="User not found")
 
     # 1. Check if already verified
-    if db_user.email_verified:
+    if db_user.emailverified:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email is already verified"
