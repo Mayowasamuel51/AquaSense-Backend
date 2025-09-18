@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException , status
 from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator
 from typing import Optional ,  List
 from sqlalchemy.orm import Session
@@ -289,6 +289,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
         },
     }
 
+
 # @router.get("/verify")
 # def verify_email(token: str, db: Session = Depends(get_db)):
 #     vt = db.query(VerificationToken).filter(VerificationToken.token == token).first()
@@ -322,6 +323,38 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 #             "email_verified": user.email_verified,
 #         },
 #     }
+@router.post("/resend-verification")
+def resend_verification_email(
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. Check if already verified
+    if user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already verified"
+        )
+
+    # 2. Generate a new token
+    token = create_verification_token(user.id)
+
+    # Optional: clear old tokens for this user
+    db.query(VerificationToken).filter(VerificationToken.user_id == user.id).delete()
+
+    # 3. Save new token (❌ no expires_at field anymore)
+    db_token = VerificationToken(
+        token=token,
+        user_id=user.id,
+    )
+    db.add(db_token)
+    db.commit()
+    # 4. Prepare verification link
+    verify_url = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
+    # 5. Send email in background
+    background_tasks.add_task(send_verification_email, user.email, verify_url)
+
+    return {"message": "Verification email resent successfully"}
 
 
 @router.get("/allusers", response_model=List[UserOut])
