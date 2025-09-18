@@ -215,7 +215,6 @@ class FarmOut(BaseModel):
 
 class UserOutResponse(BaseModel):
     message: str
-    farm: FarmOut
     user: UserOut
 
 
@@ -340,7 +339,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 #             "email_verified": user.email_verified,
 #         },
 #     }
-@router.post("/resend-verification")
+@router.post("/resend-verification" , response_model=UserOutResponse)
 def resend_verification_email(
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
@@ -376,7 +375,7 @@ def resend_verification_email(
     background_tasks.add_task(send_verification_email, db_user.email, token,
                               f"{db_user.first_name} {db_user.last_name}")
 
-    return {"message": "Verification email resent successfully"}
+    return {"message": "Verification email resent successfully",token:token,  "user": UserOut.from_orm(db_user) }
 
 
 

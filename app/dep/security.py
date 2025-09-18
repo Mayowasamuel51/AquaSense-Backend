@@ -25,7 +25,7 @@ def create_token(subject: int, secret: str, days: int):
     payload = {
         "sub": str(subject),   # store user id correctly
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(days=days)).timestamp())
+        # "exp": int((now + timedelta(days=days)).timestamp())
     }
     return jwt.encode(payload, secret, algorithm="HS256")
 
@@ -79,6 +79,6 @@ def create_verification_token(user_id: int) -> str:
     payload = {
         "sub": str(user_id),
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=VERIFY_TOKEN_TTL)).timestamp())
+        # "exp": int((now + timedelta(minutes=VERIFY_TOKEN_TTL)).timestamp())
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
