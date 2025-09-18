@@ -346,32 +346,40 @@ def resend_verification_email(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
     # 1. Check if already verified
-    if user.email_verified:
+    if db_user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email is already verified"
         )
 
     # 2. Generate a new token
-    token = create_verification_token(user.id)
+    token = create_verification_token(db_user.id)
 
-    # Optional: clear old tokens for this user
-    db.query(VerificationToken).filter(VerificationToken.user_id == user.id).delete()
-
-    # 3. Save new token (❌ no expires_at field anymore)
+    # 3. Save the new token (✅ keep old ones, do NOT delete)
     db_token = VerificationToken(
         token=token,
-        user_id=user.id,
+        user_id=db_user.id,
     )
     db.add(db_token)
     db.commit()
+    db.refresh(db_token)
+
     # 4. Prepare verification link
     verify_url = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
-    # 5. Send email in background
-    background_tasks.add_task(send_verification_email, user.email, verify_url)
 
-    return {"message": "Verification email resent successfully"}
+    # 5. Send email in background
+    background_tasks.add_task(send_verification_email, db_user.email, verify_url)
+
+    return {
+        "message": "Verification email resent successfully",
+        "user": db_user
+    }
+
 
 
 @router.get("/allusers", response_model=List[UserOut])
