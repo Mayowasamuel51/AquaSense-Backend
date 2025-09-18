@@ -260,7 +260,8 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     return {
         "user_id": u.id,
         "data": u,
-        "token": token,
+        # "token": token,
+        "access_token": token,
         "message": "User registered successfully. Please check your email to verify your account."
     }
 
@@ -280,14 +281,14 @@ def verify_email(token: str, db: Session = Depends(get_db)):
         raise HTTPException(400, "User not found")
 
     # Mark user as verified
-    if not user.email_verified:
-        user.email_verified = True
+    if not user.emailverified:
+        user.emailverified = True
         db.commit()
 
     return {
         "message": (
             "Email verified successfully!"
-            if user.email_verified else "User already verified!"
+            if user.emailverified else "User already verified!"
         ),
         "data": {
             "id": user.id,
@@ -300,8 +301,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
             "profilepicture": user.profilepicture,
             "nin": user.nin,
             "coins": user.coins,
-            "email_verified": user.email_verified,
-            "token": vt.token,   # keep token in response for the mobile app
+            "emailverified": user.emailverified,
+            "access_token": vt.token,   # keep token in response for the mobile app
         },
     }
 
