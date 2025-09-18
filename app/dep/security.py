@@ -25,7 +25,7 @@ def create_token(subject: int, secret: str, days: int):
     payload = {
         "sub": str(subject),   # store user id correctly
         "iat": int(now.timestamp()),
-        # "exp": int((now + timedelta(days=days)).timestamp())
+        "exp": int((now + timedelta(days=days)).timestamp())
     }
     return jwt.encode(payload, secret, algorithm="HS256")
 
@@ -69,7 +69,7 @@ def get_current_user(
 
 
 # Verification token lifetime (e.g. 30 minutes)
-VERIFY_TOKEN_TTL = 30
+VERIFY_TOKEN_TTL = 300000
 
 def create_verification_token(user_id: int) -> str:
     """
