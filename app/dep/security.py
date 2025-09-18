@@ -15,8 +15,8 @@ JWT_SECRET = settings.JWT_SECRET
 JWT_REFRESH_SECRET = settings.JWT_REFRESH_SECRET
 
 # Token lifetimes in days
-ACCESS_TTL = 120   # 120 days for access
-REFRESH_TTL = 180  # 180 days for refresh
+ACCESS_TTL = 800   # 120 days for access
+REFRESH_TTL = 780  # 180 days for refresh
 
 
 # ✅ create a token
