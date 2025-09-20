@@ -74,7 +74,7 @@ def get_user_batches(user_id: int,   user: User = Depends(get_current_user), db:
     # return batches
     return {
         "message": "These are all your Batches ",
-        "batches ": batches,
+        "batches": batches,
         "user": db_user
     }
 
