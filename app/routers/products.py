@@ -64,7 +64,7 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_product)
 
-    return db_product
+    return {"data":db_product}
 
 
 # ✅ Fetch all products
