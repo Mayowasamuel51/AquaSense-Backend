@@ -32,7 +32,7 @@ class MainBatchResponse(BaseModel):
 
 class AllMainBatchResponse(BaseModel):
     message: str
-    batches: BatchResponse
+    batches: List[BatchResponse]
     user: UserOut
 @router.post("/",
              response_model=MainBatchResponse)
@@ -65,7 +65,7 @@ def create_batch(
     }
 
 
-@router.get("/users/{user_id}/batches", response_model=List[AllMainBatchResponse])
+@router.get("/users/{user_id}/batches", response_model=AllMainBatchResponse)
 def get_user_batches(user_id: int,   user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
