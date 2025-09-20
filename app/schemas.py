@@ -129,8 +129,8 @@ class UnitCreate(UnitBase):
 
 class BatchBase(BaseModel):
     batchName: str
-    fish_type: Optional[str] = None
-    number_of_fish: Optional[int] = None
+    fishtype: Optional[str] = None
+    numberoffishes: Optional[int] = None
     isCompleted: Optional[bool] = False
 
 class BatchCreate(BatchBase):
@@ -139,9 +139,10 @@ class BatchCreate(BatchBase):
 class BatchResponse(BatchBase):
     batchId: str
     farmerId: int
-    fish_type:Optional[str] = None
-    number_of_fish:Optional[str] = None
-    isCompleted:Optional[str] = None
+    fishtype:Optional[str] = None
+    numberoffishes:Optional[str] = None
+    # isCompleted:Optional[str] = None
+    # isCompleted = str
     createdAt:Optional[datetime]
     updatedAt: Optional[datetime]
 

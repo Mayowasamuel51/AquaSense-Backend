@@ -25,9 +25,17 @@ router = APIRouter(prefix="/batch", tags=["batch"])
 
 
 
+class MainBatchResponse(BaseModel):
+    message: str
+    batch: BatchResponse
+    user: UserOut
 
+class AllMainBatchResponse(BaseModel):
+    message: str
+    batches: BatchResponse
+    user: UserOut
 @router.post("/",
-             response_model=BatchResponse)
+             response_model=MainBatchResponse)
 def create_batch(
         batch: BatchCreate,
         user: User = Depends(get_current_user),
@@ -40,26 +48,38 @@ def create_batch(
         farmerId=user.id,
         batchId=str(uuid.uuid4()),
         batchName = batch.batchName,
-        fish_type = batch.fish_type,
-        number_of_fish = batch.number_of_fish,
+        fishtype = batch.fishtype,
+        numberoffishes = batch.numberoffishes,
         isCompleted = batch.isCompleted
     )
     db.add(db_batch)
     db.commit()
     db.refresh(db_batch)
 
-    return db_batch
+    # return db_batch
+
+    return  {
+        "message":"You have created your Unit successfully",
+        "batch":db_batch ,
+        "user":db_user
+    }
 
 
-@router.get("/users/{user_id}/batches", response_model=List[BatchResponse])
+@router.get("/users/{user_id}/batches", response_model=List[AllMainBatchResponse])
 def get_user_batches(user_id: int,   user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User batches  not found")
     batches = db.query(Batch).filter(Batch.farmerId == user_id).all()
-    return batches
+    # return batches
+    return {
+        "message": "These are all your Batches ",
+        "batches ": batches,
+        "user": db_user
+    }
 
-@router.get("/batches/{batch_id}", response_model=BatchResponse)
+
+@router.get("/batches/{batch_id}", response_model=MainBatchResponse)
 def get_batch(batch_id: str,   user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
@@ -67,4 +87,10 @@ def get_batch(batch_id: str,   user: User = Depends(get_current_user), db: Sessi
     batch = db.query(Batch).filter(Batch.batchId == batch_id).first()
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
-    return batch
+    # return batch
+    return {
+        "message": "This is one batch for yours ",
+        "batch": batch,
+        "user": db_user
+    }
+
