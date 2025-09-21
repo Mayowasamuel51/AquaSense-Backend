@@ -14,6 +14,23 @@ def generate_random_number():
     # Make a random 5-digit number (digits won’t repeat inside the number)
     return "".join(str(d) for d in random.sample(range(0, 10), 5))
 
+class Contact(Base):
+    __tablename__ = "contacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(120), nullable=False, index=True)
+    message = Column(Text, nullable=False)
+
+class Wait(Base):
+    __tablename__ = "waitlist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    firstname = Column(String(100), nullable=False)
+    email = Column(String(120), nullable=False, index=True)
+
+
+
 
 class Farm(Base):
     __tablename__ = "farms"
@@ -63,10 +80,11 @@ class User(Base):
     # ✅ relationships
     video_progress = relationship("UserVideoProgress", backref="user", cascade="all, delete-orphan")
     test_progress = relationship("UserTestProgress", back_populates="user", cascade="all, delete-orphan")
-    # Farming units, batches, and records
+    # Farming units, batches, and records , feeds,
     units = relationship("Unit", back_populates="farmer")
     batches = relationship("Batch", back_populates="farmer")
     records = relationship("Record", back_populates="farmer")
+    feeds = relationship("Feed", back_populates="farmer")  # <-- 🔥 new one
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
@@ -178,13 +196,13 @@ class Unit(Base):
     updatedAt = Column(DateTime, default=None)
     type = Column(String(50))  # e.g., "Cage" or "Pond"
     isActive = Column(Boolean, default=False)
-
+    # ✅ Add feeds relationship
+    feeds = relationship("Feed", back_populates="unit")
     farmer = relationship("User", back_populates="units")
     records = relationship("Record", back_populates="unit")
 
 class Batch(Base):
     __tablename__ = "batches"
-
     batchId = Column(String(50), primary_key=True, index=True)
     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
     batchName = Column(String(100), nullable=False)
@@ -193,9 +211,10 @@ class Batch(Base):
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, default=None)
     isCompleted = Column(Boolean, default=False)
-
     farmer = relationship("User", back_populates="batches")
     records = relationship("Record", back_populates="batch")
+    # ✅ Add feeds relationship
+    feeds = relationship("Feed", back_populates="batch")
 
 class Record(Base):
     __tablename__ = "records"
@@ -237,7 +256,6 @@ class DailyRecord(Base):
 
     # Relationships
     record = relationship("Record", back_populates="dailyRecords")
-
 
 class WeightSampling(Base):
     __tablename__ = "weight_samplings"
@@ -299,6 +317,33 @@ class HarvestForm(Base):
     createdAt = Column(DateTime, default=datetime.utcnow)
 
     record = relationship("Record", back_populates="harvests")
+
+class Feed(Base):
+    __tablename__ = "feeds"
+
+    id = Column(String(50), primary_key=True, index=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
+    unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
+
+    feedName = Column(String(100), nullable=False)
+    feedForm = Column(String(50), nullable=False)
+    feedSize = Column(String(50), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    # unit = Column(String(50), nullable=False)
+    unitMeasure = Column(String(50), nullable=False)  # ✅ renamed (kg, bags, etc.)
+    costPerUnit = Column(Float, nullable=False)
+    totalAmount = Column(Float, nullable=False)
+    date = Column(DateTime, nullable=False)
+
+    createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # relationships
+    farmer = relationship("User", back_populates="feeds")
+    batch = relationship("Batch", back_populates="feeds")
+    unit = relationship("Unit", back_populates="feeds")
 
 
 

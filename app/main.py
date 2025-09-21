@@ -7,7 +7,7 @@ from .config import settings
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from .routers import health,auth,myfarm , profileupdate , learning ,categories,  batch , units ,products , dailyrecords
+from .routers import( contact, health,auth,myfarm,profileupdate , learning ,categories,batch,units,products,dailyrecords,feeds,waitlist )
 # expenses , profileupdate, myfarm, ponds)   # 👈 import your auth router
 from .database import engine
 from . import models
@@ -79,6 +79,21 @@ class GlobalErrorMiddleware(BaseHTTPMiddleware):
             )
 app.add_middleware(GlobalErrorMiddleware)
 # # routers
+# ---------- CUSTOM VALIDATION HANDLER ----------
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for err in exc.errors():
+        field = ".".join(str(loc) for loc in err["loc"] if loc not in ("body", "query", "path"))
+        errors.append({
+            "field": field,
+            "message": err["msg"]
+        })
+    return JSONResponse(
+        status_code=422,
+        content={"errors": errors}
+    )
+
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")# 👈 no need to add /auth again
@@ -90,4 +105,7 @@ app.include_router(batch.router, prefix="/api/v1")
 app.include_router(units.router, prefix="/api/v1")
 app.include_router(categories.router, prefix="/api/v1")
 app.include_router(dailyrecords.router,prefix="/api/v1" )
+(app.include_router(feeds.router,prefix="/api/v1" ))
+app.include_router(contact.router,prefix="/api/v1" )
+app.include_router(waitlist.router,prefix="/api/v1" )
 # app.run_server(debug=True, port=8050, host='0.0.0.0')

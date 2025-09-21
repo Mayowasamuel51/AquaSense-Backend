@@ -2,7 +2,55 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional ,List
 
+
+# ---------- CONTACT ----------
+class ContactBase(BaseModel):
+    name: str
+    email: EmailStr
+    message: str
+
+class ContactCreate(ContactBase):
+    pass
+
+class ContactResponse(ContactBase):
+    id: int
+    email:str
+    message:str
+    class Config:
+        from_attributes = True
+
+# ---------- WAIT ----------
+class WaitBase(BaseModel):
+    firstname: str
+    email: EmailStr
+
+class WaitCreate(WaitBase):
+    pass
+
+class WaitResponse(WaitBase):
+    id: int
+    firstname: str
+    email: str
+    class Config:
+        from_attributes = True
+
+class WaitBase(BaseModel):
+    firstname: str
+    email: EmailStr
+
+class WaitCreate(WaitBase):
+    pass
+
+class WaitResponse(WaitBase):
+    id: int
+    firstname :str
+    email :str
+    class Config:
+        from_attributes = True
+
+
 class WorkerBase(BaseModel):
+
     id: str
     access: str
     email: EmailStr
@@ -96,9 +144,6 @@ class AnswerTestIn(BaseModel):
     test_id: int
     option_id: int
 
-
-
-
 class UnitBase(BaseModel):
     pondName: str
     pondType: str
@@ -169,7 +214,6 @@ class RecordResponse(RecordBase):
 
     class Config:
         from_attributes = True
-
 
 class DailyRecordBase(BaseModel):
     date: datetime
@@ -299,6 +343,38 @@ class HarvestFormResponse(HarvestFormBase):
         from_attributes = True
 
 
+class FeedBase(BaseModel):
+    feedName: str
+    feedForm: str
+    feedSize: str
+    quantity: int
+    # unit: str
+    unitMeasure: str
+    costPerUnit: float
+    totalAmount: float
+    date: datetime
+
+class FeedCreate(FeedBase):
+    batchId: str
+    unitId: str
+
+class FeedResponse(FeedBase):
+    id: str
+    farmerId: int
+    batchId: str
+    unitId: str
+    createdAt: datetime
+    updatedAt: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+
+
+
+
+
 
 class CategoryBase(BaseModel):
     name: str
@@ -341,10 +417,13 @@ class ProductOut(ProductCreate):
 
     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
 
-    model_config = dict(
-        from_attributes=True,
-        validate_by_name=True
-    )
+    # model_config = dict(
+    #     from_attributes=True,
+    #     validate_by_name=True
+    # )
+
+    class Config:
+        from_attributes = True
 # class ProductOut(ProductCreate):
 #     id: int
 #     priceRange:PriceRangeBase
