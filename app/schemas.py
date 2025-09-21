@@ -392,7 +392,7 @@ class PriceRangeBase(BaseModel):
         validate_by_name = True  #
 
 class ProductTypeBase(BaseModel):
-    typeValue: float
+    typeValue: str
     valueMeasurement: str
     valuePrice: float
     quantity: int = 0

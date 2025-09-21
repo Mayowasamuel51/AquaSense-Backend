@@ -381,7 +381,7 @@ class PriceRange(Base):
 class ProductType(Base):
     __tablename__ = "product_types"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    typeValue = Column(Float, nullable=False)
+    typeValue = Column(String(230), nullable=False)
     valueMeasurement = Column(String(250), nullable=False)
     valuePrice = Column(Float, nullable=False)
     quantity = Column(Integer, default=0)
