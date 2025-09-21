@@ -396,10 +396,8 @@ class ProductTypeBase(BaseModel):
     valueMeasurement: str
     valuePrice: float
     quantity: int = 0
-
     class Config:
         from_attributes = True
-
 
 class ProductCreate(BaseModel):
     title: str
@@ -407,21 +405,16 @@ class ProductCreate(BaseModel):
     image: Optional[str]
     price: float
     category: str
-
     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
     types: Optional[List[ProductTypeBase]] = []   # 👈 optional with default empty list
 
-#
 class ProductOut(ProductCreate):
     id: int
-
     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
-
     # model_config = dict(
     #     from_attributes=True,
     #     validate_by_name=True
     # )
-
     class Config:
         from_attributes = True
 # class ProductOut(ProductCreate):
