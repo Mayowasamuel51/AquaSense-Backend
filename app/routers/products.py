@@ -85,6 +85,19 @@ def get_products(db: Session = Depends(get_db)):
             detail="No products found in the database"
         )
     return {"message":"showing all products","data":products}
+
+
+@router.get("/{product_id}", response_model=MainProductOut)
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Product with id {product_id} not found"
+        )
+    return {"message": "Product retrieved successfully", "data": product}
+
+
 # # ✅ Fetch all products
 # @router.get("/", response_model=List[ProductOut])
 # def get_products(db: Session = Depends(get_db)):
