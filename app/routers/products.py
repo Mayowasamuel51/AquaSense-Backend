@@ -67,7 +67,16 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     return {"data":db_product}
 
 
-# ✅ Fetch all products
 @router.get("/", response_model=List[ProductOut])
 def get_products(db: Session = Depends(get_db)):
-    return db.query(Product).all()
+    products = db.query(Product).all()
+    if not products:
+        raise HTTPException(
+            status_code=404,
+            detail="No products found in the database"
+        )
+    return products
+# # ✅ Fetch all products
+# @router.get("/", response_model=List[ProductOut])
+# def get_products(db: Session = Depends(get_db)):
+#     return db.query(Product).all()
