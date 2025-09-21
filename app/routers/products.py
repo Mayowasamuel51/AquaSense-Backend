@@ -23,7 +23,13 @@ from typing import List
 from ..dep.security import create_tokens , get_current_user
 
 router = APIRouter(prefix="/products", tags=["products"])
-@router.post("/", response_model=ProductOut)
+
+class MainProductOut(BaseModel) :
+    message:str
+    data:ProductOut
+
+
+@router.post("/", response_model=MainProductOut)
 def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     existing = db.query(Product).filter(Product.title == product.title).first()
     if existing:
@@ -64,10 +70,13 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_product)
 
-    return {"data":db_product}
+    return {"message":"product created " ,"data":db_product}
 
+class MainProductOutResponse (BaseModel):
+    message:str
+    data:List[ProductOut]
 
-@router.get("/", response_model=List[ProductOut])
+@router.get("/", response_model=MainProductOutResponse)
 def get_products(db: Session = Depends(get_db)):
     products = db.query(Product).all()
     if not products:
@@ -75,7 +84,7 @@ def get_products(db: Session = Depends(get_db)):
             status_code=404,
             detail="No products found in the database"
         )
-    return products
+    return {"message":"showing all products","data":products}
 # # ✅ Fetch all products
 # @router.get("/", response_model=List[ProductOut])
 # def get_products(db: Session = Depends(get_db)):
