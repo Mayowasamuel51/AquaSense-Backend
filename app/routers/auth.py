@@ -1,4 +1,4 @@
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, unquote_plus
 
 from fastapi import APIRouter, Depends, HTTPException , status
 from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator
@@ -272,16 +272,7 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
         "message": "User registered successfully. Please check your email to verify your account."
     }
 
-# app/routers/auth.py (or wherever your router is)
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import HTMLResponse
-from sqlalchemy.orm import Session
-from urllib.parse import unquote_plus, quote_plus
-from datetime import datetime
-from ..database import get_db
-from ..models import User, VerificationToken
 
-router = APIRouter(prefix="/api/v1/auth")
 
 @router.get("/verify", response_class=HTMLResponse)
 def verify_email(token: str, db: Session = Depends(get_db)):
