@@ -286,7 +286,8 @@ def verify_email(token: str, request: Request, db: Session = Depends(get_db)):
         db.commit()
 
     deep_link = f"aquasense://verify?token={quote_plus(vt.token)}"
-    web_frontend = "https://your-app-frontend.com"  # or front-end route
+    web_frontend = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={quote_plus(vt.token)}"
+    # or front-end route
 
     return templates.TemplateResponse("verify_success.html", {
         "request": request,
