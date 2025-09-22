@@ -47,6 +47,7 @@ class Farm(Base):
     # relationship
     # incomes = relationship("Income", back_populates="farm")
     incomes = relationship("Income", back_populates="farm")  # ✅
+    stockings = relationship("Stocking", back_populates="farm")
 
     # incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
 
@@ -93,6 +94,7 @@ class User(Base):
     feeds = relationship("Feed", back_populates="farmer")  # <-- 🔥 new one
     # User model
     incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
+    stockings = relationship("Stocking", back_populates="farmer")
     # ✅ add this only once
     # incomes = relationship("Income", back_populates="farmer")
 
@@ -145,8 +147,6 @@ class Test(Base):
     question = Column(Text, nullable=False)
     correct_option_id = Column(Integer, ForeignKey("options.id"), nullable=True)
     coins = Column(Integer, default=10)
-
-
     module = relationship("Module", back_populates="tests")
     options = relationship("Option", back_populates="test", cascade="all, delete-orphan",
                            foreign_keys="Option.test_id")
@@ -214,6 +214,8 @@ class Unit(Base):
     # Unit model
 
     incomes = relationship("Income", back_populates="unit")
+    # In Unit
+    stockings = relationship("Stocking", back_populates="unit")
 
 
 class Batch(Base):
@@ -233,6 +235,8 @@ class Batch(Base):
     # Batch model
 
     incomes = relationship("Income", back_populates="batch")   # ✅ matches Income.batch
+    # In Batch
+    stockings = relationship("Stocking", back_populates="batch")
 
 
 class Record(Base):
@@ -381,10 +385,7 @@ class Income(Base):
     incomeDate = Column(DateTime, default=datetime.utcnow)
     # Optional link to harvest (future-proof)
     harvestId = Column(String(50), ForeignKey("harvests.recordId"), nullable=True)
-
     appliedToPondName = Column(String(100), nullable=True)  # ✅ pond name (unit/pond applied to)
-
-
     createdAt = Column(DateTime, default=datetime.utcnow)
     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -406,22 +407,25 @@ class Income(Base):
 class Stocking(Base):
     __tablename__ = "stockings"
 
-    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
     batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
     unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
+    farmId = Column(Integer, ForeignKey("farms.id"), nullable=False)
 
-    fishType = Column(String(100), nullable=False)
-    quantityPurchased = Column(Integer, nullable=False)
-    totalAmount = Column(Float, nullable=False)
-    date = Column(DateTime, nullable=False)
+    fishType = Column(String(100), nullable=False)            # e.g., Tilapia
+    quantityPurchased = Column(Integer, nullable=False)       # total fingerlings stocked
+    totalAmount = Column(Float, nullable=False)               # purchase cost
+    date = Column(DateTime, default=datetime.utcnow)          # stocking date
 
     createdAt = Column(DateTime, default=datetime.utcnow)
-    updatedAt = Column(DateTime, default=None)
+    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    farmer = relationship("User", backref="stockings")
-    batch = relationship("Batch", backref="stockings")
-    unit = relationship("Unit", backref="stockings")
+    # Relationships
+    farmer = relationship("User", back_populates="stockings")
+    farm = relationship("Farm", back_populates="stockings")
+    batch = relationship("Batch", back_populates="stockings")
+    unit = relationship("Unit", back_populates="stockings")
 
 
 

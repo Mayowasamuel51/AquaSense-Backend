@@ -111,6 +111,8 @@ class TestOut(BaseModel):
     id: int
     question: str
     options: List[OptionOut]
+    correct_option_id: int
+
 
     class Config:
         from_attributes = True
@@ -134,6 +136,7 @@ class ModuleOut(BaseModel):
     description: Optional[str]
     videos: List[VideoOut]
     tests: List[TestOut]
+
     total_coins: int
     completion_bonus_coins: int
 
@@ -404,7 +407,28 @@ class IncomeResponse(IncomeBase):
         from_attributes = True
 
 
+class StockingBase(BaseModel):
+    fishType: str
+    quantityPurchased: int
+    totalAmount: float
+    date: datetime
+    appliedToPondName: Optional[str] = None  # ✅ helps mobile dev
 
+class StockingCreate(StockingBase):
+    batchId: str
+    unitId: str
+
+class StockingResponse(StockingBase):
+    id: str
+    farmerId: int
+    batchId: str
+    unitId: str
+    farmId: int
+    createdAt: datetime
+    updatedAt: Optional[datetime]
+
+    class Config:
+        from_attributes = True
 
 
 
