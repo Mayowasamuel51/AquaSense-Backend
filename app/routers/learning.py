@@ -19,12 +19,21 @@ router = APIRouter(
 class ModulesResponse(BaseModel):
     data:list[ModuleOut]
 
-
+class MainOutResponse (BaseModel):
+    data:ModuleOut
 # ✅ Get all modules with videos + tests
 @router.get("/", response_model=ModulesResponse)
 def get_modules(db: Session = Depends(get_db)):
     modules = db.query(Module).all()
     return {"data": modules}  # 👈 returns a DICT, not a list
+
+@router.get("/{module_id}", response_model=MainOutResponse)
+def get_module(module_id: int, db: Session = Depends(get_db)):
+    module = db.query(Module).filter(Module.id == module_id).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    return {"data": module}
+
 
 # ✅ Mark video as watched
 @router.post("/videos/{video_id}/watch")
