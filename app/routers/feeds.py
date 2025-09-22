@@ -20,16 +20,20 @@ from ..schemas import (UserOut, FarmBase, UserCreate,
 from typing import List
 # from ..dep.security import create_tokens
 from ..dep.security import create_tokens , get_current_user
-
 router = APIRouter(prefix="/feeds", tags=["feeds"])
+class MainFeeds(BaseModel):
+    message:str
+    data:FeedResponse
 
-
-@router.post("/", response_model=FeedResponse)
+@router.post("/", response_model=MainFeeds)
 def create_feed(
     feed: FeedCreate,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
     # ✅ ensure foreign keys exist
     batch_exists = db.query(Batch).filter(Batch.batchId == feed.batchId).first()
     unit_exists = db.query(Unit).filter(Unit.id == feed.unitId).first()
@@ -49,19 +53,27 @@ def create_feed(
         feedSize=feed.feedSize,
         quantity=feed.quantity,
         # unit=feed.unit
-    unitMeasure=feed.unitMeasure,
+        unitMeasure=feed.unitMeasure,
         costPerUnit=feed.costPerUnit,
         totalAmount=feed.totalAmount,
-        date=feed.date,
-    )
-
+        date=feed.date)
     db.add(db_feed)
     db.commit()
     db.refresh(db_feed)
 
-    return db_feed
+    return {
+        "message": "feed created",
+        "data":db_feed
+    }
 
+class MainFeedResponseOut(BaseModel):
+    message:str
+    data:List[FeedResponse]
 
-@router.get("/", response_model=list[FeedResponse])
+@router.get("/", response_model=MainFeedResponseOut)
 def get_feeds(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return db.query(Feed).filter(Feed.farmerId == user.id).all()
+    feedsall = db.query(Feed).filter(Feed.farmerId == user.id).all()
+    return {
+        "message":f"here are the feeds for this farmer -> { user.first_name }",
+        "data":feedsall
+    }

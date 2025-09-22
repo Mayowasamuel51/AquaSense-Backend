@@ -371,6 +371,44 @@ class FeedResponse(FeedBase):
 
 
 
+class IncomeBase(BaseModel):
+    incomeType: str
+    amountEarned: float
+    quantitySold: int
+    paymentMethod: str
+    incomeDate: datetime
+    appliedToPondName: Optional[str] = None   # ✅
+
+class IncomeCreate(IncomeBase):
+    batchId: str
+    unitId: str
+
+class IncomeResponse(IncomeBase):
+    # id: str
+    # farmerId: int
+    # batchId: str
+    # unitId: str
+    # createdAt: datetime
+    # updatedAt: Optional[datetime]
+    id: str
+    farmerId: int
+    farmId: int
+    batchId: str
+    unitId: str
+    harvestId: Optional[str] = None
+    appliedToPondName: Optional[str] = None
+    createdAt: datetime
+    updatedAt: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+
+
+
+
+
 
 
 

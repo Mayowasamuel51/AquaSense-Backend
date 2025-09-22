@@ -44,6 +44,12 @@ class Farm(Base):
     farmtype = Column(String(255), nullable=True)
     area = Column(String(100), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id") ,  unique=True)
+    # relationship
+    # incomes = relationship("Income", back_populates="farm")
+    incomes = relationship("Income", back_populates="farm")  # ✅
+
+    # incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
+
     # links to User
 
 class JustData(Base):
@@ -85,6 +91,11 @@ class User(Base):
     batches = relationship("Batch", back_populates="farmer")
     records = relationship("Record", back_populates="farmer")
     feeds = relationship("Feed", back_populates="farmer")  # <-- 🔥 new one
+    # User model
+    incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
+    # ✅ add this only once
+    # incomes = relationship("Income", back_populates="farmer")
+
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
@@ -200,6 +211,10 @@ class Unit(Base):
     feeds = relationship("Feed", back_populates="unit")
     farmer = relationship("User", back_populates="units")
     records = relationship("Record", back_populates="unit")
+    # Unit model
+
+    incomes = relationship("Income", back_populates="unit")
+
 
 class Batch(Base):
     __tablename__ = "batches"
@@ -215,6 +230,10 @@ class Batch(Base):
     records = relationship("Record", back_populates="batch")
     # ✅ Add feeds relationship
     feeds = relationship("Feed", back_populates="batch")
+    # Batch model
+
+    incomes = relationship("Income", back_populates="batch")   # ✅ matches Income.batch
+
 
 class Record(Base):
     __tablename__ = "records"
@@ -344,6 +363,67 @@ class Feed(Base):
     farmer = relationship("User", back_populates="feeds")
     batch = relationship("Batch", back_populates="feeds")
     unit = relationship("Unit", back_populates="feeds")
+
+
+class Income(Base):
+    __tablename__ = "incomes"
+
+    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
+    unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
+    farmId = Column(Integer, ForeignKey("farms.id"), nullable=False)
+
+    incomeType    = Column(String(250), nullable=False)
+    amountEarned= Column(Integer, nullable=False)
+    quantitySold = Column(Integer, nullable=False)
+    paymentMethod =  Column(String(250), nullable=False)
+    incomeDate = Column(DateTime, default=datetime.utcnow)
+    # Optional link to harvest (future-proof)
+    harvestId = Column(String(50), ForeignKey("harvests.recordId"), nullable=True)
+
+    appliedToPondName = Column(String(100), nullable=True)  # ✅ pond name (unit/pond applied to)
+
+
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    # farmer = relationship("User", back_populates="incomes")
+    # ✅ Relationships
+
+    farmer = relationship("User", back_populates="incomes")
+    farm = relationship("Farm", back_populates="incomes")
+    batch = relationship("Batch", back_populates="incomes")
+    unit = relationship("Unit", back_populates="incomes")
+
+    # farmer = relationship("User", backref="incomes")
+    # batch = relationship("Batch", backref="incomes")
+    # unit = relationship("Unit", backref="incomes")
+    # harvest = relationship("HarvestForm", backref="incomes", uselist=False)
+
+
+class Stocking(Base):
+    __tablename__ = "stockings"
+
+    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
+    unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
+
+    fishType = Column(String(100), nullable=False)
+    quantityPurchased = Column(Integer, nullable=False)
+    totalAmount = Column(Float, nullable=False)
+    date = Column(DateTime, nullable=False)
+
+    createdAt = Column(DateTime, default=datetime.utcnow)
+    updatedAt = Column(DateTime, default=None)
+
+    farmer = relationship("User", backref="stockings")
+    batch = relationship("Batch", backref="stockings")
+    unit = relationship("Unit", backref="stockings")
+
+
 
 
 
