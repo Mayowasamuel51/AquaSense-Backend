@@ -60,7 +60,7 @@ EMAIL_HTML_TEMPLATE = """
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Verify Your Email - AquaSense</title>
+  <title>Verify Your Email - AquaSense+</title>
   <style>
     body, table, td, a {
       -webkit-text-size-adjust: 100%;
@@ -125,11 +125,11 @@ EMAIL_HTML_TEMPLATE = """
       <td>
         <div class="container">
           <div class="header">
-            AquaSense
+            AquaSense+
           </div>
           <div class="content">
             <h2>Hi {{ full_name }},</h2>
-            <p>Thank you for registering with <strong>AquaSense</strong>!</p>
+            <p>Thank you for registering with <strong>AquaSense+</strong>!</p>
             <p>Please verify your email address to complete your registration and activate your account.</p>
 
             <!-- ✅ Deep link button -->
