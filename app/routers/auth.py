@@ -271,31 +271,88 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
         "access_token": token,
         "message": "User registered successfully. Please check your email to verify your account."
     }
-templates = Jinja2Templates(directory="templates")
+
+# app/routers/auth.py (or wherever your router is)
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import HTMLResponse
+from sqlalchemy.orm import Session
+from urllib.parse import unquote_plus, quote_plus
+from datetime import datetime
+from ..database import get_db
+from ..models import User, VerificationToken
+
+router = APIRouter(prefix="/api/v1/auth")
 
 @router.get("/verify", response_class=HTMLResponse)
-def verify_email(token: str, request: Request, db: Session = Depends(get_db)):
+def verify_email(token: str, db: Session = Depends(get_db)):
+    # decode token from URL (handles %2E, +, etc)
+    token = unquote_plus(token)
+
+    # find token row
     vt = db.query(VerificationToken).filter(VerificationToken.token == token).one_or_none()
     if not vt:
         raise HTTPException(400, "Invalid token")
-    user = db.query(User).filter(User.id == vt.user_id).first()
+
+    # fetch user
+    user = db.query(User).filter(User.id == vt.user_id).one_or_none()
     if not user:
         raise HTTPException(400, "User not found")
+
+    # mark verified if needed
     if not user.email_verified:
         user.email_verified = True
         db.commit()
+        message = "Email verified successfully!"
+    else:
+        message = "User already verified!"
 
+    # prepare deep-link and web link (encode token for URL)
     deep_link = f"aquasense://verify?token={quote_plus(vt.token)}"
-    web_frontend = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={quote_plus(vt.token)}"
-    # or front-end route
+     web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={quote_plus(vt.token)}"
 
-    return templates.TemplateResponse("verify_success.html", {
-        "request": request,
-        "user": user,
-        "token": vt.token,
-        "deep_link": deep_link,
-        "web_frontend": web_frontend
-    })
+    # simple, clean HTML
+    html = f"""
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width,initial-scale=1"/>
+      <title>AquaSense — Email Verified</title>
+      <style>
+        body {{ font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#f3f6f9; color:#0b1a2b; margin:0; padding:24px; }}
+        .card {{ max-width:720px; margin:48px auto; background:#fff; border-radius:12px; padding:28px; box-shadow:0 10px 30px rgba(11,26,43,0.08); }}
+        h1 {{ margin:0 0 6px; font-size:24px; }}
+        p.lead {{ margin:10px 0 20px; color:#334155; }}
+        .actions {{ display:flex; gap:12px; flex-wrap:wrap; }}
+        .btn {{ padding:12px 18px; border-radius:8px; text-decoration:none; font-weight:600; display:inline-block; }}
+        .btn-primary {{ background:#0ea5a7; color:#fff; }}
+        .btn-ghost {{ background:transparent; border:1px solid #e6eef0; color:#0b1a2b; }}
+        .info {{ margin-top:18px; background:#fbfdfe; padding:12px; border-radius:8px; color:#475569; font-size:14px; }}
+        code {{ display:block; margin-top:8px; padding:10px; background:#0b1a2b; color:#e6fffa; border-radius:6px; word-break:break-all; }}
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>✅ {message}</h1>
+        <p class="lead">Hi {user.first_name or user.email}, your email {user.email} is verified. Thanks for joining AquaSense.</p>
+
+        <div class="actions">
+          <a class="btn btn-primary" href="{deep_link}">Open App</a>
+          <a class="btn btn-ghost" href="{web_link}">Open App Web</a>
+        </div>
+
+        <div class="info">
+          <div><strong>User:</strong> {user.first_name or ''} {user.last_name or ''} &nbsp; • &nbsp; {user.email}</div>
+          <div style="margin-top:10px;"><strong>Verification token (for mobile app):</strong></div>
+          <code>{vt.token}</code>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    return HTMLResponse(content=html, status_code=200)
+
 
 # @router.get("/verify")
 # def verify_email(token: str, db: Session = Depends(get_db)):
