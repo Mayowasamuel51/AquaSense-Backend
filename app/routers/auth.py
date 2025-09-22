@@ -1,9 +1,16 @@
+from urllib.parse import quote_plus
+
 from fastapi import APIRouter, Depends, HTTPException , status
 from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator
 from typing import Optional ,  List
 from sqlalchemy.orm import Session
 from passlib.hash import argon2
 import smtplib
+
+from starlette.requests import Request
+from starlette.responses import HTMLResponse
+from starlette.templating import Jinja2Templates
+
 from ..database  import get_db
 from datetime import datetime, timedelta
 from jinja2 import Template
@@ -264,47 +271,71 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
         "access_token": token,
         "message": "User registered successfully. Please check your email to verify your account."
     }
+templates = Jinja2Templates(directory="templates")
 
-@router.get("/verify")
-def verify_email(token: str, db: Session = Depends(get_db)):
-    # Find the verification token
-    vt = db.query(VerificationToken).filter(
-        VerificationToken.token == token
-    ).one_or_none()
-
+@router.get("/verify", response_class=HTMLResponse)
+def verify_email(token: str, request: Request, db: Session = Depends(get_db)):
+    vt = db.query(VerificationToken).filter(VerificationToken.token == token).one_or_none()
     if not vt:
         raise HTTPException(400, "Invalid token")
-
-    # ✅ Fetch the user tied to this token
-    user = db.query(User).filter(User.id == vt.user_id).one_or_none()
+    user = db.query(User).filter(User.id == vt.user_id).first()
     if not user:
         raise HTTPException(400, "User not found")
-
-    # Mark user as verified
-    if not user.emailverified:
-        user.emailverified = True
+    if not user.email_verified:
+        user.email_verified = True
         db.commit()
 
-    return {
-        "message": (
-            "Email verified successfully!"
-            if user.emailverified else "User already verified!"
-        ),
-        "data": {
-            "id": user.id,
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "phone": user.phone,
-            "gender": user.gender,
-            "kyc_status": user.kyc_status,
-            "profilepicture": user.profilepicture,
-            "nin": user.nin,
-            "coins": user.coins,
-            "emailverified": user.emailverified,
-            "access_token": vt.token,   # keep token in response for the mobile app
-        },
-    }
+    deep_link = f"aquasense://verify?token={quote_plus(vt.token)}"
+    web_frontend = "https://your-app-frontend.com"  # or front-end route
+
+    return templates.TemplateResponse("verify_success.html", {
+        "request": request,
+        "user": user,
+        "token": vt.token,
+        "deep_link": deep_link,
+        "web_frontend": web_frontend
+    })
+
+# @router.get("/verify")
+# def verify_email(token: str, db: Session = Depends(get_db)):
+#     # Find the verification token
+#     vt = db.query(VerificationToken).filter(
+#         VerificationToken.token == token
+#     ).one_or_none()
+#
+#     if not vt:
+#         raise HTTPException(400, "Invalid token")
+#
+#     # ✅ Fetch the user tied to this token
+#     user = db.query(User).filter(User.id == vt.user_id).one_or_none()
+#     if not user:
+#         raise HTTPException(400, "User not found")
+#
+#     # Mark user as verified
+#     if not user.emailverified:
+#         user.emailverified = True
+#         db.commit()
+#
+#     return {
+#         "message": (
+#             "Email verified successfully!"
+#             if user.emailverified else "User already verified!"
+#         ),
+#         "data": {
+#             "id": user.id,
+#             "email": user.email,
+#             "first_name": user.first_name,
+#             "last_name": user.last_name,
+#             "phone": user.phone,
+#             "gender": user.gender,
+#             "kyc_status": user.kyc_status,
+#             "profilepicture": user.profilepicture,
+#             "nin": user.nin,
+#             "coins": user.coins,
+#             "emailverified": user.emailverified,
+#             "access_token": vt.token,   # keep token in response for the mobile app
+#         },
+#     }
 
 
 # @router.get("/verify")

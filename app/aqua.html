@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AquaSense — Email Verified</title>
+  <style>
+    /* same styles as above (or put in CSS file) */
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Email verified ✅</h1>
+    <p class="lead">Hi {{ user.first_name or user.email }}, your email has been successfully verified. Welcome to AquaSense!</p>
+
+    <div class="buttons">
+      <a class="btn btn-primary" href="{{ deep_link }}">Open App</a>
+      <a class="btn btn-ghost" href="{{ web_frontend }}">Open in Browser</a>
+    </div>
+
+    <div class="meta">If the button doesn't open the app, copy the token below into the app:</div>
+
+    <div class="info">
+      <div><strong>User:</strong> {{ user.first_name }} {{ user.last_name }} &nbsp; &middot; &nbsp; {{ user.email }}</div>
+      <div class="meta">Verification token (for mobile app):</div>
+      <code class="token">{{ token }}</code>
+    </div>
+  </div>
+</body>
+</html>
