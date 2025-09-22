@@ -30,8 +30,8 @@ print(11123)
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-EMAIL_ADDRESS = "fpasamuelmayowa51@gmail.com"       # change to your email
-EMAIL_PASSWORD  = "cvzy htcq fzsa tybs"          # use app password (not raw Gmail pass)
+EMAIL_ADDRESS = "aquasenseapp@gmail.com"       # change to your email
+EMAIL_PASSWORD  = "xnnz pxum rxoq cnaz"          # use app password (not raw Gmail pass)
 
 # def send_verification_email(to_email: str, verify_url: str):
 #     msg = EmailMessage()
