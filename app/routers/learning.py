@@ -21,6 +21,7 @@ class ModulesResponse(BaseModel):
 
 class MainOutResponse (BaseModel):
     data:ModuleOut
+
 # ✅ Get all modules with videos + tests
 @router.get("/", response_model=ModulesResponse)
 def get_modules(db: Session = Depends(get_db)):
