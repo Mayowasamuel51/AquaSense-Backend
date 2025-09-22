@@ -308,7 +308,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
     # prepare deep-link and web link (encode token for URL)
     deep_link = f"aquasense://verify?token={quote_plus(vt.token)}"
-     web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={quote_plus(vt.token)}"
+    web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={quote_plus(vt.token)}"
 
     # simple, clean HTML
     html = f"""
