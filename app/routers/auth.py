@@ -159,7 +159,7 @@ EMAIL_HTML_TEMPLATE = """
 
 def send_verification_email(to_email: str, token: str, full_name: str ):
     msg = EmailMessage()
-    msg['Subject'] = "Verify your AquaSense account"
+    msg['Subject'] = "Verify your AquaSense+ account"
     msg['From'] = EMAIL_ADDRESS
     msg['To'] = to_email
 
