@@ -100,6 +100,19 @@ class UserOut(UserBase):
     class Config:
         from_attributes = True
 
+
+
+class LocationUpdate(BaseModel):
+    address: Optional[str] = None
+    longitude: Optional[str] = None
+    latitude: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    area: Optional[str] = None
+
+
+
+
 class OptionOut(BaseModel):
     id: int
     text: str

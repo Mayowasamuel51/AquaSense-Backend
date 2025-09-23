@@ -61,6 +61,23 @@ class JustData(Base):
     # relationship back to User
     user = relationship("User", back_populates="justdata")
 
+
+class Location(Base):
+    __tablename__ = "locations"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    address = Column(String(255), nullable=True)
+    longitude = Column(String(100), nullable=True)
+    latitude = Column(String(100), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    area = Column(String(100), nullable=True)
+
+    # one-to-one with User
+    user_id = Column(Integer, ForeignKey("users.id"))
+    user = relationship("User", back_populates="location")
+
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -95,6 +112,8 @@ class User(Base):
     # User model
     incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
     stockings = relationship("Stocking", back_populates="farmer")
+    # new relationship
+    location = relationship("Location", uselist=False, back_populates="user")
     # ✅ add this only once
     # incomes = relationship("Income", back_populates="farmer")
 

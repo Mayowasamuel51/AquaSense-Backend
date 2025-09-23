@@ -225,8 +225,6 @@ class UserOutResponse(BaseModel):
     user: UserOut
 
 
-
-
 @router.post("/register")
 def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if body.email and db.query(User).filter(User.email == body.email).first():
@@ -393,7 +391,6 @@ def getUser(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return users
 
-
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
@@ -453,16 +450,6 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     #     },
     #     "tokens": tokens
     # }
-
-
-
-
-
-
-
-
-
-
 
 
 
