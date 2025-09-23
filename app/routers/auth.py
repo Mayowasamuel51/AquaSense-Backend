@@ -262,8 +262,6 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
 
     db.add(db_token)
     db.commit()
-
-
     return {
         "user_id": u.id,
         "data": u,
@@ -274,7 +272,8 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
 
 
 
- @router.get("/verify")
+
+@router.get("/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
     # Find the verification token
     vt = db.query(VerificationToken).filter(
