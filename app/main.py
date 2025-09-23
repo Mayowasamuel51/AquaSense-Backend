@@ -99,10 +99,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-
 @app.get("/.well-known/assetlinks.json", response_class=FileResponse)
 async def serve_assetlinks():
-    file_path = os.path.join(os.path.dirname(__file__), ".well-known", "assetlinks.json")
+    # go one folder up from main.py to project root
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    file_path = os.path.join(base_dir, ".well-known", "assetlinks.json")
     return FileResponse(file_path, media_type="application/json")
 
 app.include_router(health.router, prefix="/api/v1")
