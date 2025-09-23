@@ -1,7 +1,10 @@
+import os
+
 from fastapi import FastAPI,  Request
 from fastapi.middleware.cors import CORSMiddleware
 # from starlette.responses import JSONResponse
 from fastapi.responses import JSONResponse
+from starlette.responses import FileResponse
 
 from .config import settings
 from fastapi.exceptions import RequestValidationError
@@ -95,6 +98,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"errors": errors}
     )
 
+
+
+@app.get("/.well-known/assetlinks.json", response_class=FileResponse)
+async def serve_assetlinks():
+    file_path = os.path.join(os.path.dirname(__file__), ".well-known", "assetlinks.json")
+    return FileResponse(file_path, media_type="application/json")
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")# 👈 no need to add /auth again
