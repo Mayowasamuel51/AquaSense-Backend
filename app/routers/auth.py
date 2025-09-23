@@ -133,7 +133,7 @@ EMAIL_HTML_TEMPLATE = """
             <p>Please verify your email address to complete your registration and activate your account.</p>
 
             <!-- ✅ Deep link button -->
-            <a href="{{ deep_link }}"    style="display:inline-block;
+            <a href="{{ web_link }}"    style="display:inline-block;
           padding:14px 28px;
           margin:20px 0;
           background-color:#276882;
