@@ -191,7 +191,7 @@ def send_verification_email(to_email: str, token: str, full_name: str ):
     print(html_content)
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        with smtplib.SMTP_SSL("smtp.gmail.com",587) as smtp:
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             smtp.send_message(msg)
             logger.info(f"Verification email sent to {to_email}")
