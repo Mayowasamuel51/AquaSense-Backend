@@ -269,45 +269,38 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     }
 
 
-
-
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi import Request
+from fastapi import Query
 
 @router.get("/verify")
 def verify_email(
-    request: Request,
     token: str,
-    utm_source: str | None = None,   # 👈 optional query param
-    db: Session = Depends(get_db),
+    utm_source: str = Query(None),   # optional param
+    db: Session = Depends(get_db)
 ):
+    # 1. Find the verification token
     vt = db.query(VerificationToken).filter(
         VerificationToken.token == token
     ).one_or_none()
-
     if not vt:
-        return JSONResponse(
-            status_code=400,
-            content={"message": "Invalid token", "success": False}
-        )
+        raise HTTPException(400, "Invalid token")
 
+    # 2. Fetch the user
     user = db.query(User).filter(User.id == vt.user_id).one_or_none()
     if not user:
-        return JSONResponse(
-            status_code=400,
-            content={"message": "User not found", "success": False}
-        )
+        raise HTTPException(400, "User not found")
 
+    # 3. Mark user as verified
     if not user.emailverified:
         user.emailverified = True
         db.commit()
 
-    deep_link = f"aquasense://verify?token={token}"
-
-    # ✅ JSON response (always returned)
-    json_response = {
-        "success": True,
-        "message": "Email verified successfully!" if user.emailverified else "User already verified!",
+    # ✅ JSON response (always returned for mobile consumption)
+    response_json = {
+        "message": (
+            "Email verified successfully!"
+            if user.emailverified else "User already verified!"
+        ),
         "data": {
             "id": user.id,
             "email": user.email,
@@ -322,50 +315,47 @@ def verify_email(
             "emailverified": user.emailverified,
             "access_token": vt.token,
         },
-        "deep_link": deep_link if utm_source else None
     }
 
-    # If request came from app (utm_source present) → return JSON only
-    if utm_source:
-        return JSONResponse(content=json_response)
+    # ✅ If `utm_source=app` → return only JSON
+    if utm_source == "app":
+        return JSONResponse(content=response_json)
 
-    # Otherwise, return both JSON + HTML page for browser users
-    html = f"""
-    <!DOCTYPE html>
+    # ✅ Otherwise → show HTML page + also return JSON underneath
+    html_content = f"""
     <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Email Verified</title>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                background: #f3f6f9;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-            }}
-            .card {{
-                background: white;
-                padding: 20px 30px;
-                border-radius: 10px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                text-align: center;
-            }}
-            h1 {{ color: #0ea5a7; }}
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>✅ Email verified successfully</h1>
-            <p>Thank you, {user.first_name or user.email}, your email is now verified.</p>
-        </div>
-    </body>
+        <head>
+            <title>Email Verified</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    background-color: #f4f8fb;
+                    text-align: center;
+                    padding: 50px;
+                }}
+                .card {{
+                    background: #fff;
+                    padding: 30px;
+                    border-radius: 12px;
+                    box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+                    display: inline-block;
+                }}
+                h1 {{ color: #2e7d32; }}
+                p {{ color: #555; }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>✅ Email Verified!</h1>
+                <p>Hi {user.first_name}, your AquaSense account has been verified successfully.</p>
+                <small>This page also returned JSON for the app.</small>
+            </div>
+        </body>
     </html>
     """
+    return HTMLResponse(content=html_content)  # browser sees this
 
-    # Return HTML page for browsers
-    return HTMLResponse(content=html, status_code=200)
+
 
 #
 # @router.get("/verify")
