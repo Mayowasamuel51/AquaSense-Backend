@@ -269,117 +269,34 @@ def register(body: RegisterIn, background_tasks: BackgroundTasks, db: Session = 
     }
 
 
-# from fastapi.responses import HTMLResponse, JSONResponse
-# from fastapi import Query
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import Query
 
-# @router.get("/verify")
-# def verify_email(
-#     token: str,
-#     utm_source: str = Query(None),   # optional param
-#     db: Session = Depends(get_db)
-# ):
-#     # 1. Find the verification token
-#     vt = db.query(VerificationToken).filter(
-#         VerificationToken.token == token
-#     ).one_or_none()
-#     if not vt:
-#         raise HTTPException(400, "Invalid token")
-#
-#     # 2. Fetch the user
-#     user = db.query(User).filter(User.id == vt.user_id).one_or_none()
-#     if not user:
-#         raise HTTPException(400, "User not found")
-#
-#     # 3. Mark user as verified
-#     if not user.emailverified:
-#         user.emailverified = True
-#         db.commit()
-#
-#     # ✅ JSON response (always returned for mobile consumption)
-#     response_json = {
-#         "message": (
-#             "Email verified successfully!"
-#             if user.emailverified else "User already verified!"
-#         ),
-#         "data": {
-#             "id": user.id,
-#             "email": user.email,
-#             "first_name": user.first_name,
-#             "last_name": user.last_name,
-#             "phone": user.phone,
-#             "gender": user.gender,
-#             "kyc_status": user.kyc_status,
-#             "profilepicture": user.profilepicture,
-#             "nin": user.nin,
-#             "coins": user.coins,
-#             "emailverified": user.emailverified,
-#             "access_token": vt.token,
-#         },
-#     }
-#
-#     # ✅ If `utm_source=app` → return only JSON
-#     if utm_source == "app":
-#         return JSONResponse(content=response_json)
-#
-#     # ✅ Otherwise → show HTML page + also return JSON underneath
-#     html_content = f"""
-#     <html>
-#         <head>
-#             <title>Email Verified</title>
-#             <style>
-#                 body {{
-#                     font-family: Arial, sans-serif;
-#                     background-color: #f4f8fb;
-#                     text-align: center;
-#                     padding: 50px;
-#                 }}
-#                 .card {{
-#                     background: #fff;
-#                     padding: 30px;
-#                     border-radius: 12px;
-#                     box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
-#                     display: inline-block;
-#                 }}
-#                 h1 {{ color: #2e7d32; }}
-#                 p {{ color: #555; }}
-#             </style>
-#         </head>
-#         <body>
-#             <div class="card">
-#                 <h1>✅ Email Verified!</h1>
-#                 <p>Hi {user.first_name}, your AquaSense account has been verified successfully.</p>
-#                 <small>This page also returned JSON for the app.</small>
-#             </div>
-#         </body>
-#     </html>
-#     """
-#     return HTMLResponse(content=html_content)  # browser sees this
-
-
-
-#
 @router.get("/verify")
-def verify_email(token: str, db: Session = Depends(get_db)):
-    # excpte another , might  be nullable and seeing utm_source
-    # Find the verification token
+def verify_email(
+    token: str,
+    utm_source: str = Query(None),   # optional param
+    db: Session = Depends(get_db)
+):
+    # 1. Find the verification token
     vt = db.query(VerificationToken).filter(
         VerificationToken.token == token
     ).one_or_none()
-
     if not vt:
         raise HTTPException(400, "Invalid token")
 
-    # ✅ Fetch the user tied to this token
+    # 2. Fetch the user
     user = db.query(User).filter(User.id == vt.user_id).one_or_none()
     if not user:
         raise HTTPException(400, "User not found")
 
-    # Mark user as verified
+    # 3. Mark user as verified
     if not user.emailverified:
         user.emailverified = True
         db.commit()
 
-    return {
+    # ✅ JSON response (always returned for mobile consumption)
+    response_json = {
         "message": (
             "Email verified successfully!"
             if user.emailverified else "User already verified!"
@@ -396,9 +313,92 @@ def verify_email(token: str, db: Session = Depends(get_db)):
             "nin": user.nin,
             "coins": user.coins,
             "emailverified": user.emailverified,
-            "access_token": vt.token,   # keep token in response for the mobile app
+            "access_token": vt.token,
         },
     }
+
+    # ✅ If `utm_source=app` → return only JSON
+    if utm_source == "app":
+        return JSONResponse(content=response_json)
+
+    # ✅ Otherwise → show HTML page + also return JSON underneath
+    html_content = f"""
+    <html>
+        <head>
+            <title>Email Verified</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    background-color: #f4f8fb;
+                    text-align: center;
+                    padding: 50px;
+                }}
+                .card {{
+                    background: #fff;
+                    padding: 30px;
+                    border-radius: 12px;
+                    box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+                    display: inline-block;
+                }}
+                h1 {{ color: #2e7d32; }}
+                p {{ color: #555; }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>✅ Email Verified!</h1>
+                <p>Hi {user.first_name}, your AquaSense account has been verified successfully.</p>
+                <small>This page also returned JSON for the app.</small>
+            </div>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)  # browser sees this
+
+
+
+#
+# @router.get("/verify")
+# def verify_email(token: str, db: Session = Depends(get_db)):
+#     # excpte another , might  be nullable and seeing utm_source
+#     # Find the verification token
+#     vt = db.query(VerificationToken).filter(
+#         VerificationToken.token == token
+#     ).one_or_none()
+#
+#     if not vt:
+#         raise HTTPException(400, "Invalid token")
+#
+#     # ✅ Fetch the user tied to this token
+#     user = db.query(User).filter(User.id == vt.user_id).one_or_none()
+#     if not user:
+#         raise HTTPException(400, "User not found")
+#
+#     # Mark user as verified
+#     if not user.emailverified:
+#         user.emailverified = True
+#         db.commit()
+#
+#     return {
+#         "message": (
+#             "Email verified successfully!"
+#             if user.emailverified else "User already verified!"
+#         ),
+#         "data": {
+#             "id": user.id,
+#             "email": user.email,
+#             "first_name": user.first_name,
+#             "last_name": user.last_name,
+#             "phone": user.phone,
+#             "gender": user.gender,
+#             "kyc_status": user.kyc_status,
+#             "profilepicture": user.profilepicture,
+#             "nin": user.nin,
+#             "coins": user.coins,
+#             "emailverified": user.emailverified,
+#             "access_token": vt.token,   # keep token in response for the mobile app
+#         },
+#     }
 
 
 # @router.get("/verify")
