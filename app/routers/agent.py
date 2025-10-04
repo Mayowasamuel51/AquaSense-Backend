@@ -15,7 +15,7 @@ class Agent(BaseModel):
     helpwith: str
     issue: str | None = None
     date: str
-    username: str  # required
+    # username: str  # required
 
 
 @router.post("/")
