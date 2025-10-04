@@ -92,7 +92,8 @@ def create_lab_order(
 
     # 4️⃣ If cash is needed → initialize Paystack
     if cash_needed > 0:
-        paystack_data = initialize_paystack(lab.email, cash_needed)
+        # paystack_data = initialize_paystack(lab.email, cash_needed)
+        paystack_data = initialize_paystack(lab.email, cash_needed, db, user)
         db_user_info = db.query(User).filter(User.id == user.id).first()
         new_lab.transaction_reference = paystack_data["reference"]
         db.commit()
