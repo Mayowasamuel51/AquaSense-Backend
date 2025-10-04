@@ -459,6 +459,7 @@ class Product(Base):
     price = Column(Float, nullable=False)
     category = Column(String(250), nullable=False)
     featured = Column(Boolean, default=False)
+    featureexpiredate = Column(Boolean , default=False)
 
     # relationships
 
@@ -499,6 +500,42 @@ class Cart(Base):
     quantity = Column(Integer, nullable=False)
     product = relationship("Product")
 
+
+
+class Labs(Base):
+    __tablename__ = "labs"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    labtesttorun = Column(String(250), nullable=False)
+    selectspecfictest = Column(String(250), nullable=True)
+    date = Column(String(250), nullable=False)
+    username = Column(String(250), nullable=False)
+    # 🔑 Order-related fields
+    status = Column(String(50), default="pending")  # pending, in_progress, completed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    priority = Column(String(50), default="normal")  # low, normal, high
+
+
+
+class SupportAgent(Base):
+    __tablename__ = "supportagent"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    helpwith = Column(String(250), nullable=False)
+    issue= Column(String(500), nullable=True)
+    date = Column(String(250), nullable=False)
+    username = Column(String(250), nullable=False)
+
+
+
+class VetSupport(Base):
+    __tablename__ = "vesupport"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    helpwith = Column(String(250), nullable=False)
+    image= Column(String(500), nullable=True)
+    video = Column(String(500), nullable=True)
+    date = Column(String(250), nullable=False)
+    username = Column(String(250), nullable=False)
+    coins = Column(String(240), nullable=False)
 
 
 
