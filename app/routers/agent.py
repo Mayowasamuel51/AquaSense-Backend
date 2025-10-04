@@ -9,7 +9,7 @@ from ..models import User, Product, PriceRange, Cart, ProductType, Labs, Support
 from ..schemas import (UserOut, FarmBase, UserCreate, ProductOut)
 from typing import List
 router = APIRouter(prefix="/supportagent", tags=["supportagent"])
-
+from ..dep.security import create_tokens , get_current_user
 
 class Agent(BaseModel):
     helpwith: str
@@ -19,12 +19,16 @@ class Agent(BaseModel):
 
 
 @router.post("/")
-def create_lab(agent:Agent, db: Session = Depends(get_db)):
+def create_lab(agent:Agent,   user: User = Depends(get_current_user),db: Session = Depends(get_db)):
+    # Check if user exists
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
     agent_form = SupportAgent(
         helpwith =agent.helpwith ,
         issue=agent.issue,
         date=agent.date,
-        username=agent.username  # captured here
+        username=db_user.first_name,  # captured here
     )
     db.add(agent_form)
     db.commit()
