@@ -81,6 +81,7 @@ class FarmOut(FarmBase):
 class UserBase(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
+
     profilepicture: Optional[str] = None
     nin: Optional[str] = None
     kyc_status: str = "unverified"
@@ -94,6 +95,7 @@ class UserCreate(UserBase):
 
 class UserOut(UserBase):
     id: int
+    coins:int         # i just add this here for the labs
     email:str
     farm: Optional[FarmOut]
     workers: List[WorkerOut] = []

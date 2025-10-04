@@ -502,6 +502,20 @@ class Cart(Base):
 
 
 
+# class Labs(Base):
+#     __tablename__ = "labs"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     labtesttorun = Column(String(250), nullable=False)
+#     selectspecfictest = Column(String(250), nullable=True)
+#     date = Column(String(250), nullable=False)
+#     username = Column(String(250), nullable=False)
+#     # Order/payment tracking
+#     status = Column(String(50), default="pending")  # pending, in_progress, completed
+#     payment_status = Column(String(50), default="unpaid")  # unpaid, paid, failed
+#     payment_reference = Column(String(250), nullable=True)  # from Paystack
+#     amount = Column(Integer, nullable=False, default=0)  # cost of test
+#     created_at = Column(DateTime, default=datetime.utcnow)
+#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 class Labs(Base):
     __tablename__ = "labs"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -509,13 +523,15 @@ class Labs(Base):
     selectspecfictest = Column(String(250), nullable=True)
     date = Column(String(250), nullable=False)
     username = Column(String(250), nullable=False)
-    # Order/payment tracking
     status = Column(String(50), default="pending")  # pending, in_progress, completed
-    payment_status = Column(String(50), default="unpaid")  # unpaid, paid, failed
-    payment_reference = Column(String(250), nullable=True)  # from Paystack
-    amount = Column(Integer, nullable=False, default=0)  # cost of test
+    amount = Column(Integer, nullable=False)  # full cost in Naira
+    coin_used = Column(Integer, default=0)    # how many coins applied
+    payment_method = Column(String(50), nullable=False)  # "coins+paystack"
+    payment_status = Column(String(50), default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    transaction_reference = Column(String(100), nullable=True)
+
 
 
 class SupportAgent(Base):
