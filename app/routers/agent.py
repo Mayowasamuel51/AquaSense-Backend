@@ -34,7 +34,7 @@ def create_lab(agent:Agent,   user: User = Depends(get_current_user),db: Session
     db.commit()
     db.refresh(agent_form)
 
-    return {"message": "", "Hello an Agent will attend to you ": agent_form}
+    return {"message": "", "data": agent_form}
 
 
 @router.get("/")
