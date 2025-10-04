@@ -509,12 +509,13 @@ class Labs(Base):
     selectspecfictest = Column(String(250), nullable=True)
     date = Column(String(250), nullable=False)
     username = Column(String(250), nullable=False)
-    # 🔑 Order-related fields
+    # Order/payment tracking
     status = Column(String(50), default="pending")  # pending, in_progress, completed
+    payment_status = Column(String(50), default="unpaid")  # unpaid, paid, failed
+    payment_reference = Column(String(250), nullable=True)  # from Paystack
+    amount = Column(Integer, nullable=False, default=0)  # cost of test
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    priority = Column(String(50), default="normal")  # low, normal, high
-
 
 
 class SupportAgent(Base):
@@ -539,7 +540,15 @@ class VetSupport(Base):
 
 
 
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
 
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    category = Column(String(100), nullable=False)  # e.g., "Emergency", "Order", "Bulk Purchase"
+    message = Column(String(1000), nullable=True)   # farmer’s message
+    response = Column(String(1000), nullable=True)  # admin/expert reply
+    status = Column(String(50), default="open")     # open, answered, closed
+    farmer_name = Column(String(100), nullable=True)
 
 
 
