@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -76,15 +76,41 @@ class MainProductOutResponse (BaseModel):
     message:str
     data:List[ProductOut]
 
+
+
 @router.get("/", response_model=MainProductOutResponse)
-def get_products(db: Session = Depends(get_db)):
-    products = db.query(Product).all()
+def get_products(
+    db: Session = Depends(get_db),
+    sort: Optional[str] = Query(None, description="Sort: newest, featured, price_low, price_high")
+):
+    query = db.query(Product)
+
+    # Apply sorting
+    if sort == "newest":
+        query = query.order_by(Product.id.desc())  # assuming higher ID = newer
+    elif sort == "featured":
+        query = query.filter(Product.featured == True).order_by(Product.id.desc())
+    elif sort == "price_low":
+        query = query.order_by(Product.price.asc())
+    elif sort == "price_high":
+        query = query.order_by(Product.price.desc())
+
+    products = query.all()
+
     if not products:
-        raise HTTPException(
-            status_code=404,
-            detail="No products found in the database"
-        )
-    return {"message":"showing all products","data":products}
+        raise HTTPException(status_code=404, detail="No products found in the database")
+
+    return {"message": "showing all products", "data": products}
+
+# @router.get("/", response_model=MainProductOutResponse)
+# def get_products(db: Session = Depends(get_db)):
+#     products = db.query(Product).all()
+#     if not products:
+#         raise HTTPException(
+#             status_code=404,
+#             detail="No products found in the database"
+#         )
+#     return {"message":"showing all products","data":products}
 
 
 @router.get("/{product_id}", response_model=MainProductOut)

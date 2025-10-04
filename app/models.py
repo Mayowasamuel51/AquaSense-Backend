@@ -458,6 +458,7 @@ class Product(Base):
     image = Column(String(250), nullable=True)
     price = Column(Float, nullable=False)
     category = Column(String(250), nullable=False)
+    featured = Column(Boolean, default=False)
 
     # relationships
 
@@ -496,7 +497,6 @@ class Cart(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity = Column(Integer, nullable=False)
-
     product = relationship("Product")
 
 
