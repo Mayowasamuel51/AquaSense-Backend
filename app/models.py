@@ -614,6 +614,7 @@ class Labs(Base):
     discounttotal = Column(Integer, nullable=False)
     amount = Column(Integer, nullable=False)
     payment_method = Column(String(50), nullable=False)
+    transaction_reference = Column(String(255), nullable=True)
     payment_status = Column(String(50), default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

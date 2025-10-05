@@ -85,6 +85,7 @@ def create_lab_order(
         date=datetime.utcnow().strftime("%Y-%m-%d"),
         discount=discount,
         totalprice=totalprice,
+        # transaction_reference=reference,
         discounttotal=discounttotal,
         amount=discounttotal,  # amount to pay via Paystack
         payment_method="paystack",
