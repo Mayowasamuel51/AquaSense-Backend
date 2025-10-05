@@ -463,8 +463,8 @@ class Product(Base):
     image = Column(String(250), nullable=True)
     price = Column(Float, nullable=False)
     category = Column(String(250), nullable=False)
-    featured = Column(Boolean, default=False)
-    featureexpiredate = Column(Boolean , default=False)
+    featured = Column(Boolean, default=False , nullable=True)
+    featureexpiredate = Column(Boolean , default=False, nullable=True)
 
     # relationships
 

@@ -102,25 +102,21 @@ class GlobalErrorMiddleware(BaseHTTPMiddleware):
         try:
             return await call_next(request)
 
-        # Validation errors (422 Unprocessable Entity)
+        # Validation errors (422)
         except RequestValidationError as exc:
             logger.warning(f"Validation error on {request.url}: {exc.errors()}")
 
-            errors = []
-            for err in exc.errors():
-                field = ".".join(str(loc) for loc in err["loc"] if loc not in ("body", "query", "path"))
-                errors.append({
-                    "field": field,
-                    "message": err["msg"]
-                })
+            # take only first error message, or join multiple if needed
+            first_error = exc.errors()[0]
+            field = ".".join(str(loc) for loc in first_error["loc"] if loc not in ("body", "query", "path"))
+            message = f"{field}: {first_error['msg']}" if field else first_error["msg"]
 
             return JSONResponse(
                 status_code=422,
                 content={
                     "success": False,
                     "status_code": 422,
-                    "error": "Validation Error",
-                    "errors": errors
+                    "detail": message
                 },
             )
 
@@ -133,13 +129,7 @@ class GlobalErrorMiddleware(BaseHTTPMiddleware):
                 content={
                     "success": False,
                     "status_code": exc.status_code,
-                    "error": "HTTP Error",
-                    "errors": [
-                        {
-                            "field": "request",
-                            "message": exc.detail
-                        }
-                    ]
+                    "detail": exc.detail
                 },
             )
 
@@ -153,17 +143,9 @@ class GlobalErrorMiddleware(BaseHTTPMiddleware):
                 content={
                     "success": False,
                     "status_code": 500,
-                    "error": "Internal Server Error",
-                    "errors": [
-                        {
-                            "field": "server",
-                            "message": "An unexpected error occurred. Please try again later."
-                        }
-                    ]
+                    "detail": "An unexpected error occurred. Please try again later."
                 },
             )
-
-# add your global error middleware
 app.add_middleware(GlobalErrorMiddleware)
 
 @app.get("/.well-known/assetlinks.json", response_class=FileResponse)
