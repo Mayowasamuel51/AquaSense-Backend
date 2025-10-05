@@ -10,8 +10,7 @@ engine = create_engine(DATABASE_URL,
     max_overflow=20,       # extra connections if pool is full
     pool_timeout=30,       # wait time before giving up
     pool_recycle=1800,
-    pool_pre_ping=True,
-                       )
+    pool_pre_ping=True,)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

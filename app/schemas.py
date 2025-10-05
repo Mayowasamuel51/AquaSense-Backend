@@ -445,14 +445,6 @@ class StockingResponse(StockingBase):
     class Config:
         from_attributes = True
 
-
-
-
-
-
-
-
-
 class CategoryBase(BaseModel):
     name: str
     model_config = dict(from_attributes=True)

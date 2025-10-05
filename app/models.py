@@ -120,7 +120,12 @@ class User(Base):
     support_tickets = relationship("SupportAgent", back_populates="user", cascade="all, delete-orphan")
     # Reverse relationship to support tickets
     support_ticket = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
-    labs = relationship("Labs", back_populates="user", cascade="all, delete-orphan")
+
+    # 🧩 Add this line:
+    labs = relationship("Labs", back_populates="user",  cascade="all, delete-orphan")
+
+
+
 
 
 class VerificationToken(Base):
@@ -544,25 +549,6 @@ class Cart(Base):
 #     amount = Column(Integer, nullable=False, default=0)  # cost of test
 #     created_at = Column(DateTime, default=datetime.utcnow)
 #     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-class Labs(Base):
-    __tablename__ = "labs"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    labtesttorun = Column(String(250), nullable=False)
-    selectspecfictest = Column(String(250), nullable=True)
-    date = Column(String(250), nullable=False)
-    username = Column(String(250), nullable=False)
-    status = Column(String(50), default="pending")  # pending, in_progress, completed
-    amount = Column(Integer, nullable=False)  # full cost in Naira
-    coin_used = Column(Integer, default=0)    # how many coins applied
-    payment_method = Column(String(50), nullable=False)  # "coins+paystack"
-    payment_status = Column(String(50), default="pending")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    transaction_reference = Column(String(100), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    user = relationship("User", back_populates="labs")  # optional, for easy access
-
-
 
 class SupportAgent(Base):
     __tablename__ = "supportagent"
@@ -575,9 +561,6 @@ class SupportAgent(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="support_tickets")  # optional, for easy access
 
-
-
-
 class VetSupport(Base):
     __tablename__ = "vesupport"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -587,8 +570,6 @@ class VetSupport(Base):
     date = Column(String(250), nullable=False)
     username = Column(String(250), nullable=False)
     coins = Column(String(240), nullable=False)
-
-
 
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
@@ -603,10 +584,6 @@ class SupportTicket(Base):
     user = relationship("User", back_populates="support_ticket")  # access the user object
 
 
-
-
-
-
 class TestCategory(Base):
     __tablename__ = "test_categories"
 
@@ -619,21 +596,44 @@ class TestCategory(Base):
 
 class TestItem(Base):
     __tablename__ = "test_items"  # 👈 new table name (no conflict)
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     price = Column(Integer, nullable=False)
-
     category_id = Column(Integer, ForeignKey("test_categories.id"), nullable=False)
-
     # Link back to category
     category = relationship("TestCategory", back_populates="tests")
 
 
+class Labs(Base):
+    __tablename__ = "labs"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    username = Column(String(250), nullable=False)
+    date = Column(String(250), nullable=False)
+    discount = Column(Integer, default=0)
+    totalprice = Column(Integer, nullable=False)
+    discounttotal = Column(Integer, nullable=False)
+    amount = Column(Integer, nullable=False)
+    payment_method = Column(String(50), nullable=False)
+    payment_status = Column(String(50), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # 🧩 Relationship to lab tests
+    tests = relationship("LabTest", back_populates="lab", cascade="all, delete-orphan")
+    # 🧩 Relationship back to User
+    user = relationship("User", back_populates="labs")
 
 
+class LabTest(Base):
+    __tablename__ = "lab_tests"
 
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    test_name = Column(String(255), nullable=False)
+    price = Column(Float, nullable=False)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
 
+    lab = relationship("Labs", back_populates="tests")
 
 
 

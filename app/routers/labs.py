@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 import requests  # ✅ real requests library
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 from passlib.hash import argon2
 from uuid import uuid4
 from ..database  import get_db
-from ..models import User, Product, PriceRange, Cart, ProductType, Labs
+from ..models import User, Product, PriceRange, Cart, ProductType, Labs, LabTest
 from ..schemas import (UserOut, FarmBase, UserCreate, ProductOut)
 from typing import List
 from ..dep.security import create_tokens , get_current_user
@@ -52,113 +53,160 @@ def initialize_paystack(email: str, amount: int, db: Session, user: User):
 # -------------------------------
 # Lab order creation
 # -------------------------------
+class TestItem(BaseModel):
+    test: str
+    price: float
+
+class TestCategory(BaseModel):
+    title: str
+    tests: List[TestItem]
+
+# class LabCreate(BaseModel):
+#     labtesttorun: str
+#     selectspecfictest: Optional[str] = None
+#     date: str
+#     amount: int
+#     username: Optional[str] = None
+#     email: Optional[str] = None
+
 class LabCreate(BaseModel):
-    labtesttorun: str
-    selectspecfictest: Optional[str] = None
+    discount: float
+    totalprice: float
+    discounttotal: float
     date: str
-    amount: int
-    username: Optional[str] = None
-    email: Optional[str] = None
+    email: str
+    data: List[TestCategory]
 
 
 @router.post("/")
-def create_lab_order(
-    lab: LabCreate,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    db_user = db.query(User).filter(User.id == user.id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # -------------------------
-    # 1️⃣ Coin cap logic
-    # -------------------------
-    coins_available = db_user.coins
-    coin_cap = min(LABS_COIN_CAP, lab.amount)
-    coins_used = min(coins_available, coin_cap)
-    cash_needed = lab.amount - coins_used
-
-    # -------------------------
-    # 2️⃣ Deduct coins immediately
-    # -------------------------
-    db_user.coins -= coins_used
-    db.commit()
-
-    # -------------------------
-    # 3️⃣ Create lab order
-    # -------------------------
+def create_lab_order(payload: dict, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Create the main lab record
     new_lab = Labs(
-        labtesttorun=lab.labtesttorun,
-        selectspecfictest=lab.selectspecfictest,
-        date=lab.date,
-        username=f"{db_user.first_name} {db_user.last_name}",
-        amount=lab.amount,
-        coin_used=coins_used,
-        user_id= db_user.id,
-        payment_method="coins+paystack" if cash_needed > 0 else "coins",
-        payment_status="pending" if cash_needed > 0 else "success",
+        username=f"{user.first_name} {user.last_name}",
+        date=datetime.utcnow().strftime("%Y-%m-%d"),
+        discount=payload.get("discount", 0),
+        totalprice=payload.get("totalprice", 0),
+        discounttotal=payload.get("discounttotal", 0),
+        amount=payload.get("discounttotal", 0),  # amount after discount
+        payment_method="coins+paystack",
+        payment_status="pending",
+        user_id=user.id
     )
     db.add(new_lab)
     db.commit()
     db.refresh(new_lab)
 
-    # -------------------------
-    # 4️⃣ If cash needed → Paystack
-    # -------------------------
-    if cash_needed > 0:
-        paystack_data = initialize_paystack(lab.email, cash_needed, db, user)
-        new_lab.transaction_reference = paystack_data["reference"]
-        db.commit()
+    # Now save the nested tests
+    for category in payload.get("tests", []):
+        title = category["title"]
+        for test_item in category["tests"]:
+            test_name = test_item["test"]
+            price = test_item["price"]
+            db.add(LabTest(title=title, test_name=test_name, price=price, lab_id=new_lab.id))
 
-        return {
-            "message": "Part coins deducted. Continue with Paystack.",
-            "coins_used": coins_used,
-            "cash_needed": cash_needed,
-            "authorization_url": paystack_data["authorization_url"],
-            "reference": paystack_data["reference"],
-            "data": {
-                "id": db_user.id,
-                "first_name": db_user.first_name,
-                "last_name": db_user.last_name,
-                "email": db_user.email,
-                "coins": db_user.coins,
-            },
-            "lab_order": {
-                "id": new_lab.id,
-                "labtesttorun": new_lab.labtesttorun,
-                "selectspecfictest": new_lab.selectspecfictest,
-                "amount": new_lab.amount,
-                "coins_used": new_lab.coin_used,
-                "payment_status": new_lab.payment_status,
-                "payment_method": new_lab.payment_method,
-            },
-        }
+    db.commit()
 
-    # -------------------------
-    # 5️⃣ Fully paid with coins
-    # -------------------------
-    return {
-        "message": "Lab order paid fully with coins.",
-        "coins_used": coins_used,
-        "cash_needed": 0,
-        "user": {
-            "id": db_user.id,
-            "first_name": db_user.first_name,
-            "last_name": db_user.last_name,
-            "email": db_user.email,
-            "coins_remaining": db_user.coins,
-        },
-        "lab_order": {
-            "id": new_lab.id,
-            "labtesttorun": new_lab.labtesttorun,
-            "selectspecfictest": new_lab.selectspecfictest,
-            "amount": new_lab.amount,
-            "coins_used": new_lab.coin_used,
-            "payment_status": new_lab.payment_status,
-            "payment_method": new_lab.payment_method,
-        },
-    }
+    return {"message": "Lab order created successfully", "lab_id": new_lab.id}
+
+
+# @router.post("/")
+# def create_lab_order(
+#     lab: LabCreate,
+#     db: Session = Depends(get_db),
+#     user: User = Depends(get_current_user),
+# ):
+#     db_user = db.query(User).filter(User.id == user.id).first()
+#     if not db_user:
+#         raise HTTPException(status_code=404, detail="User not found")
+#
+#     # -------------------------
+#     # 1️⃣ Coin cap logic
+#     # -------------------------
+#     coins_available = db_user.coins
+#     coin_cap = min(LABS_COIN_CAP, lab.amount)
+#     coins_used = min(coins_available, coin_cap)
+#     cash_needed = lab.amount - coins_used
+#
+#     # -------------------------
+#     # 2️⃣ Deduct coins immediately
+#     # -------------------------
+#     db_user.coins -= coins_used
+#     db.commit()
+#
+#     # -------------------------
+#     # 3️⃣ Create lab order
+#     # -------------------------
+#     new_lab = Labs(
+#         labtesttorun=lab.labtesttorun,
+#         selectspecfictest=lab.selectspecfictest,
+#         date=lab.date,
+#         username=f"{db_user.first_name} {db_user.last_name}",
+#         amount=lab.amount,
+#         coin_used=coins_used,
+#         user_id= db_user.id,
+#         payment_method="coins+paystack" if cash_needed > 0 else "coins",
+#         payment_status="pending" if cash_needed > 0 else "success",
+#     )
+#     db.add(new_lab)
+#     db.commit()
+#     db.refresh(new_lab)
+#
+#     # -------------------------
+#     # 4️⃣ If cash needed → Paystack
+#     # -------------------------
+#     if cash_needed > 0:
+#         paystack_data = initialize_paystack(lab.email, cash_needed, db, user)
+#         new_lab.transaction_reference = paystack_data["reference"]
+#         db.commit()
+#
+#         return {
+#             "message": "Part coins deducted. Continue with Paystack.",
+#             "coins_used": coins_used,
+#             "cash_needed": cash_needed,
+#             "authorization_url": paystack_data["authorization_url"],
+#             "reference": paystack_data["reference"],
+#             "data": {
+#                 "id": db_user.id,
+#                 "first_name": db_user.first_name,
+#                 "last_name": db_user.last_name,
+#                 "email": db_user.email,
+#                 "coins": db_user.coins,
+#             },
+#             "lab_order": {
+#                 "id": new_lab.id,
+#                 "labtesttorun": new_lab.labtesttorun,
+#                 "selectspecfictest": new_lab.selectspecfictest,
+#                 "amount": new_lab.amount,
+#                 "coins_used": new_lab.coin_used,
+#                 "payment_status": new_lab.payment_status,
+#                 "payment_method": new_lab.payment_method,
+#             },
+#         }
+#
+#     # -------------------------
+#     # 5️⃣ Fully paid with coins
+#     # -------------------------
+#     return {
+#         "message": "Lab order paid fully with coins.",
+#         "coins_used": coins_used,
+#         "cash_needed": 0,
+#         "user": {
+#             "id": db_user.id,
+#             "first_name": db_user.first_name,
+#             "last_name": db_user.last_name,
+#             "email": db_user.email,
+#             "coins_remaining": db_user.coins,
+#         },
+#         "lab_order": {
+#             "id": new_lab.id,
+#             "labtesttorun": new_lab.labtesttorun,
+#             "selectspecfictest": new_lab.selectspecfictest,
+#             "amount": new_lab.amount,
+#             "coins_used": new_lab.coin_used,
+#             "payment_status": new_lab.payment_status,
+#             "payment_method": new_lab.payment_method,
+#         },
+#     }
 
 
 # -------------------------------
