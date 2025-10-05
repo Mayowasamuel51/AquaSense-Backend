@@ -120,6 +120,7 @@ class User(Base):
     support_tickets = relationship("SupportAgent", back_populates="user", cascade="all, delete-orphan")
     # Reverse relationship to support tickets
     support_ticket = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
+    labs = relationship("Labs", back_populates="user", cascade="all, delete-orphan")
 
 
 class VerificationToken(Base):
@@ -535,6 +536,8 @@ class Labs(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     transaction_reference = Column(String(100), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="labs")  # optional, for easy access
 
 
 
