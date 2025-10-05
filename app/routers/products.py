@@ -76,8 +76,6 @@ class MainProductOutResponse (BaseModel):
     message:str
     data:List[ProductOut]
 
-
-
 @router.get("/", response_model=MainProductOutResponse)
 def get_products(
     db: Session = Depends(get_db),
@@ -94,24 +92,10 @@ def get_products(
         query = query.order_by(Product.price.asc())
     elif sort == "price_high":
         query = query.order_by(Product.price.desc())
-
     products = query.all()
-
     if not products:
         raise HTTPException(status_code=404, detail="No products found in the database")
-
     return {"message": "showing all products", "data": products}
-
-# @router.get("/", response_model=MainProductOutResponse)
-# def get_products(db: Session = Depends(get_db)):
-#     products = db.query(Product).all()
-#     if not products:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="No products found in the database"
-#         )
-#     return {"message":"showing all products","data":products}
-
 
 @router.get("/{product_id}", response_model=MainProductOut)
 def get_product(product_id: int, db: Session = Depends(get_db)):
@@ -124,7 +108,17 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     return {"message": "Product retrieved successfully", "data": product}
 
 
+
 # # ✅ Fetch all products
 # @router.get("/", response_model=List[ProductOut])
 # def get_products(db: Session = Depends(get_db)):
 #     return db.query(Product).all()
+# @router.get("/", response_model=MainProductOutResponse)
+# def get_products(db: Session = Depends(get_db)):
+#     products = db.query(Product).all()
+#     if not products:
+#         raise HTTPException(
+#             status_code=404,
+#             detail="No products found in the database"
+#         )
+#     return {"message":"showing all products","data":products}

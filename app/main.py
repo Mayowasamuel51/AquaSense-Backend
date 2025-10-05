@@ -20,7 +20,6 @@ import traceback
 # from apscheduler.schedulers.background import BackgroundScheduler
 # from mangum import Mangum
 
-
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",")]
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Platform API", version="0.1.0")
@@ -37,67 +36,135 @@ app.add_middleware(
 # Configure logging (you can also configure file logging if needed)
 logger = logging.getLogger("uvicorn.error")
 
+# class GlobalErrorMiddleware(BaseHTTPMiddleware):
+#     async def dispatch(self, request: Request, call_next):
+#         try:
+#             return await call_next(request)
+#
+#         # Validation errors (422)
+#         except RequestValidationError as exc:
+#             logger.warning(f"Validation error on {request.url}: {exc.errors()}")
+#             return JSONResponse(
+#                 status_code=422,
+#                 content={
+#                     "success": False,
+#                     "status_code": 422,
+#                     "error": "Validation Error",
+#                     "detail": exc.errors(),
+#                 },
+#             )
+#
+#         # HTTP errors (like 401 Unauthorized, 404 Not Found, etc.)
+#         except StarletteHTTPException as exc:
+#             logger.info(f"HTTP error {exc.status_code} on {request.url}: {exc.detail}")
+#             return JSONResponse(
+#                 status_code=exc.status_code,
+#                 content={
+#                     "success": False,
+#                     "status_code": exc.status_code,
+#                     "error": "HTTP Error",
+#                     "detail": exc.detail,
+#                 },
+#             )
+#
+#         # Catch-all for unexpected errors
+#         except Exception as exc:
+#             logger.error(f"Unexpected error on {request.url}: {exc}")
+#             logger.debug(traceback.format_exc())  # full traceback
+#             return JSONResponse(
+#                 status_code=500,
+#                 content={
+#                     "success": False,
+#                     "status_code": 500,
+#                     "error": "Internal Server Error from the backend , application still in progress",
+#                     "detail": "An unexpected error occurred. Please try again later.",
+#                 },
+#             )
+# app.add_middleware(GlobalErrorMiddleware)
+# # routers
+# # ---------- CUSTOM VALIDATION HANDLER ----------
+# @app.exception_handler(RequestValidationError)
+# async def validation_exception_handler(request: Request, exc: RequestValidationError):
+#     errors = []
+#     for err in exc.errors():
+#         field = ".".join(str(loc) for loc in err["loc"] if loc not in ("body", "query", "path"))
+#         errors.append({
+#             "field": field,
+#             "message": err["msg"]
+#         })
+#     return JSONResponse(
+#         status_code=422,
+#         content={"errors": errors}
+#     )
+
 class GlobalErrorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         try:
             return await call_next(request)
 
-        # Validation errors (422)
+        # Validation errors (422 Unprocessable Entity)
         except RequestValidationError as exc:
             logger.warning(f"Validation error on {request.url}: {exc.errors()}")
+
+            errors = []
+            for err in exc.errors():
+                field = ".".join(str(loc) for loc in err["loc"] if loc not in ("body", "query", "path"))
+                errors.append({
+                    "field": field,
+                    "message": err["msg"]
+                })
+
             return JSONResponse(
                 status_code=422,
                 content={
                     "success": False,
                     "status_code": 422,
                     "error": "Validation Error",
-                    "detail": exc.errors(),
+                    "errors": errors
                 },
             )
 
-        # HTTP errors (like 401 Unauthorized, 404 Not Found, etc.)
+        # HTTP errors (404, 401, etc.)
         except StarletteHTTPException as exc:
             logger.info(f"HTTP error {exc.status_code} on {request.url}: {exc.detail}")
+
             return JSONResponse(
                 status_code=exc.status_code,
                 content={
                     "success": False,
                     "status_code": exc.status_code,
                     "error": "HTTP Error",
-                    "detail": exc.detail,
+                    "errors": [
+                        {
+                            "field": "request",
+                            "message": exc.detail
+                        }
+                    ]
                 },
             )
 
-        # Catch-all for unexpected errors
+        # Unexpected / Crash errors (500)
         except Exception as exc:
             logger.error(f"Unexpected error on {request.url}: {exc}")
-            logger.debug(traceback.format_exc())  # full traceback
+            logger.debug(traceback.format_exc())
+
             return JSONResponse(
                 status_code=500,
                 content={
                     "success": False,
                     "status_code": 500,
-                    "error": "Internal Server Error from the backend , application still in progress",
-                    "detail": "An unexpected error occurred. Please try again later.",
+                    "error": "Internal Server Error",
+                    "errors": [
+                        {
+                            "field": "server",
+                            "message": "An unexpected error occurred. Please try again later."
+                        }
+                    ]
                 },
             )
-app.add_middleware(GlobalErrorMiddleware)
-# # routers
-# ---------- CUSTOM VALIDATION HANDLER ----------
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    errors = []
-    for err in exc.errors():
-        field = ".".join(str(loc) for loc in err["loc"] if loc not in ("body", "query", "path"))
-        errors.append({
-            "field": field,
-            "message": err["msg"]
-        })
-    return JSONResponse(
-        status_code=422,
-        content={"errors": errors}
-    )
 
+# add your global error middleware
+app.add_middleware(GlobalErrorMiddleware)
 
 @app.get("/.well-known/assetlinks.json", response_class=FileResponse)
 async def serve_assetlinks():

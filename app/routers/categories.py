@@ -20,6 +20,16 @@ from typing import List
 
 
 router = APIRouter(prefix="/categories", tags=["categories"])
+
+@router.get("/{category}", response_model=List[ProductOut])
+def get_categories(category: str, db: Session = Depends(get_db)):
+    products = db.query(Product).filter(Product.category == category).all()
+    if not products:
+        # Optional: return empty list instead of error
+        return []
+    return products
+
+
 #
 # @router.post("/", response_model=CategoryOut)
 # def create_category(category: CategoryBase, db: Session = Depends(get_db)):
@@ -32,17 +42,6 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 #     db.commit()
 #     db.refresh(db_category)
 #     return db_category
-
-
-@router.get("/{category}", response_model=List[ProductOut])
-def get_categories(category: str, db: Session = Depends(get_db)):
-    products = db.query(Product).filter(Product.category == category).all()
-    if not products:
-        # Optional: return empty list instead of error
-        return []
-    return products
-
-#
 # @router.get("/categories/{category_id}", response_model=List[ProductOut])
 # def get_products_by_category(category_id: int, db: Session = Depends(get_db)):
 #     category = db.query(Category).filter(Category.id == category_id).first()
