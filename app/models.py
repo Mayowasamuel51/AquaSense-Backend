@@ -465,7 +465,7 @@ class Product(Base):
     category = Column(String(250), nullable=False)
     featured = Column(Boolean, default=False , nullable=True)
     featureexpiredate = Column(Boolean , default=False, nullable=True)
-
+    quantity = Column(Integer, default=0)
     # relationships
 
     price_range = relationship("PriceRange", uselist=False,  back_populates="product")
@@ -498,12 +498,35 @@ class ProductType(Base):
     product_id = Column(Integer, ForeignKey("products.id"))
     product = relationship("Product", back_populates="types")
 
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    total_amount = Column(Float, nullable=False)
+    coins_used = Column(Integer, default=0)
+    discount = Column(Float, default=0)
+    final_amount = Column(Float, nullable=False)
+    status = Column(String(550), default="pending")  # pending, success, failed
+    paystack_ref = Column(String(550), nullable=True, unique=True)
+    items_json = Column(JSON, nullable=True)  # 🆕 store cart items
+
+
 class Cart(Base):
     __tablename__ = "cart"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    product_id = Column(Integer, ForeignKey("products.id"))
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    type_id = Column(Integer, ForeignKey("product_types.id"), nullable=True)
     quantity = Column(Integer, nullable=False)
+
     product = relationship("Product")
+    selected_type = relationship("ProductType")
+# class Cart(Base):
+#     __tablename__ = "cart"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     product_id = Column(Integer, ForeignKey("products.id"))
+#     quantity = Column(Integer, nullable=False)
+#     product = relationship("Product")
 
 
 
@@ -578,6 +601,48 @@ class SupportTicket(Base):
     # Link to User table
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="support_ticket")  # access the user object
+
+
+
+
+
+
+class TestCategory(Base):
+    __tablename__ = "test_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), unique=True, nullable=False)
+
+    # Relationship to test_items table
+    tests = relationship("TestItem", back_populates="category", cascade="all, delete-orphan")
+
+
+class TestItem(Base):
+    __tablename__ = "test_items"  # 👈 new table name (no conflict)
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    price = Column(Integer, nullable=False)
+
+    category_id = Column(Integer, ForeignKey("test_categories.id"), nullable=False)
+
+    # Link back to category
+    category = relationship("TestCategory", back_populates="tests")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

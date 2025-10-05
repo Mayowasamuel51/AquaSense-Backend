@@ -487,14 +487,39 @@ class ProductCreate(BaseModel):
 
 class ProductOut(ProductCreate):
     id: int
-   
     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
-    # model_config = dict(
-    #     from_attributes=True,
-    #     validate_by_name=True
-    # )
     class Config:
         from_attributes = True
+
+class CartCreate(BaseModel):
+    product_id: int
+    quantity: int
+    type_id: Optional[int] = None
+
+
+class CartOut(BaseModel):
+    id: int
+    quantity: int
+    product: ProductOut
+    selected_type: Optional[ProductTypeBase]
+
+    class Config:
+        from_attributes = True
+# class CartItem(BaseModel):
+#     product_id: str
+#     quantity: int
+#
+# class CartOut(BaseModel):
+#     product: ProductOut
+#     quantity: int
+#     total_price: float
+#
+#     class Config:
+#         from_attributes = True
+
+
+
+
 # class ProductOut(ProductCreate):
 #     id: int
 #     priceRange:PriceRangeBase
@@ -507,22 +532,6 @@ class ProductOut(ProductCreate):
     #     fields = {
     #         "priceRange": "price_range"
     #     }
-
-
-class CartItem(BaseModel):
-    product_id: str
-    quantity: int
-
-class CartOut(BaseModel):
-    product: ProductOut
-    quantity: int
-    total_price: float
-
-    class Config:
-        from_attributes = True
-
-
-
 
 #
 # class UserBase(BaseModel):
