@@ -14,18 +14,12 @@ from ..schemas import (UserOut, FarmBase, UserCreate, ProductOut)
 from typing import List
 from ..dep.security import create_tokens , get_current_user
 router = APIRouter(prefix="/labs", tags=["labs"])
-# class LabCreate(BaseModel):
-#     labtesttorun: str
-#     selectspecfictest: Optional[str] = None
-#     date: str
-#     amount: int  # ✅ comes from client
-#     payment_method: str  # "coins" or "paystack"
 PAYSTACK_SECRET_KEY = os.getenv(
     "PAYSTACK_SECRET_KEY", "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
 )
 PAYSTACK_BASE_URL = os.getenv("PAYSTACK_BASE_URL", "https://api.paystack.co")
 
-LABS_COIN_CAP = 200  # Max coins applicable per lab
+
 
 # -------------------------------
 # Paystack initialization helper
@@ -61,13 +55,6 @@ class TestCategory(BaseModel):
     title: str
     tests: List[TestItem]
 
-# class LabCreate(BaseModel):
-#     labtesttorun: str
-#     selectspecfictest: Optional[str] = None
-#     date: str
-#     amount: int
-#     username: Optional[str] = None
-#     email: Optional[str] = None
 
 class LabCreate(BaseModel):
     discount: float
@@ -77,31 +64,30 @@ class LabCreate(BaseModel):
     email: str
     data: List[TestCategory]
 
-
 @router.post("/")
-def create_lab_order(payload: dict, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    # Check if user exists
+def create_lab_order(
+    payload: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    # Get the total amount (after discount)
-    discount_total = payload.get("discounttotal", 0)
-    # Check if the user has enough coins
-    if db_user.coins < discount_total:
-        raise HTTPException(status_code=400, detail="Insufficient coins balance")
 
-    # Deduct coins
-    db_user.coins -= discount_total
+    discount = payload.get("discount", 0)
+    totalprice = payload.get("totalprice", 0)
+    discounttotal = payload.get("discounttotal", 0)
+    tests = payload.get("tests", [])
 
-    # Create the main lab record
+    # 💾 Create new lab record first
     new_lab = Labs(
         username=f"{db_user.first_name} {db_user.last_name}",
         date=datetime.utcnow().strftime("%Y-%m-%d"),
-        discount=payload.get("discount", 0),
-        totalprice=payload.get("totalprice", 0),
-        discounttotal=discount_total,
-        amount=discount_total,  # amount after discount
-        payment_method="coins+paystack",
+        discount=discount,
+        totalprice=totalprice,
+        discounttotal=discounttotal,
+        amount=discounttotal,  # amount to pay via Paystack
+        payment_method="paystack",
         payment_status="pending",
         user_id=db_user.id
     )
@@ -109,28 +95,98 @@ def create_lab_order(payload: dict, db: Session = Depends(get_db), user: User = 
     db.commit()
     db.refresh(new_lab)
 
-    # Now save the nested tests
-    for category in payload.get("tests", []):
-        title = category["title"]
-        for test_item in category["tests"]:
-            test_name = test_item["test"]
-            price = test_item["price"]
-            db.add(LabTest(title=title, test_name=test_name, price=price, lab_id=new_lab.id))
+    # 🧪 Save all test items
+    for category in tests:
+        title = category.get("title")
+        for test_item in category.get("tests", []):
+            db.add(
+                LabTest(
+                    title=title,
+                    test_name=test_item["test"],
+                    price=test_item["price"],
+                    lab_id=new_lab.id
+                )
+            )
     db.commit()
 
-    return {
-        "message": "Lab order created successfully, coins deducted",
-        "lab_id": new_lab.id,
-        "data": {
-            "id": db_user.id,
-            "first_name": db_user.first_name,
-            "last_name": db_user.last_name,
-            "email": db_user.email,
-            "coins": db_user.coins,
-        },
-    }
+    # 💳 Initialize Paystack payment
+    try:
+        paystack_data = initialize_paystack(db_user.email, discounttotal, db, user)
+        authorization_url = paystack_data["authorization_url"]
+        reference = paystack_data["reference"]
+
+        # Save the transaction reference to the lab
+        new_lab.transaction_reference = reference
+        db.commit()
+
+        return {
+            "message": "Lab order created. Proceed to Paystack payment.",
+            "authorization_url": authorization_url,
+            "reference": reference,
+            "lab_id": new_lab.id,
+            "user": {
+                "id": db_user.id,
+                "first_name": db_user.first_name,
+                "last_name": db_user.last_name,
+                "email": db_user.email,
+            },
+        }
+
+    except Exception as e:
+        db.delete(new_lab)
+        db.commit()
+        raise HTTPException(status_code=400, detail=f"Paystack initialization failed: {str(e)}")
 
 
+@router.get("/labs/paystack/verify/{reference}")
+def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
+    url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+    res = requests.get(url, headers=headers)
+    data = res.json()
+    lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
+    if not lab:
+        raise HTTPException(404, "Lab order not found")
+
+    if data["status"] and data["data"]["status"] == "success":
+        lab.payment_status = "success"
+        db.commit()
+
+        # Convert kobo → Naira for frontend
+        paid_naira = data["data"]["amount"] / 100
+        requested_naira = data["data"]["requested_amount"] / 100
+
+        user = db.query(User).filter(User.id == lab.user_id).first()
+
+        return {
+            "message": "Payment successful",
+            "lab_order": {
+                "id": lab.id,
+                "labtesttorun": lab.labtesttorun,
+                "selectspecfictest": lab.selectspecfictest,
+                "amount": lab.amount,
+                "coins_used": lab.coin_used,
+                "payment_status": lab.payment_status,
+                "payment_method": lab.payment_method,
+                "transaction_reference": lab.transaction_reference,
+            },
+            "user": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "coins_remaining": user.coins,
+            },
+            "paystack_payment": {
+                "paid_amount_naira": paid_naira,
+                "requested_amount_naira": requested_naira,
+                "gateway_response": data["data"]["gateway_response"],
+                "channel": data["data"]["channel"],
+                "currency": data["data"]["currency"],
+            },
+        }
+
+    return {"message": "Payment failed", "data": data}
 # @router.post("/")
 # def create_lab_order(
 #     lab: LabCreate,
@@ -234,55 +290,7 @@ def create_lab_order(payload: dict, db: Session = Depends(get_db), user: User = 
 # -------------------------------
 # Paystack verification
 # -------------------------------
-@router.get("/labs/paystack/verify/{reference}")
-def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
-    url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
-    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    res = requests.get(url, headers=headers)
-    data = res.json()
-    lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
-    if not lab:
-        raise HTTPException(404, "Lab order not found")
 
-    if data["status"] and data["data"]["status"] == "success":
-        lab.payment_status = "success"
-        db.commit()
-
-        # Convert kobo → Naira for frontend
-        paid_naira = data["data"]["amount"] / 100
-        requested_naira = data["data"]["requested_amount"] / 100
-
-        user = db.query(User).filter(User.id == lab.user_id).first()
-
-        return {
-            "message": "Payment successful",
-            "lab_order": {
-                "id": lab.id,
-                "labtesttorun": lab.labtesttorun,
-                "selectspecfictest": lab.selectspecfictest,
-                "amount": lab.amount,
-                "coins_used": lab.coin_used,
-                "payment_status": lab.payment_status,
-                "payment_method": lab.payment_method,
-                "transaction_reference": lab.transaction_reference,
-            },
-            "user": {
-                "id": user.id,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "email": user.email,
-                "coins_remaining": user.coins,
-            },
-            "paystack_payment": {
-                "paid_amount_naira": paid_naira,
-                "requested_amount_naira": requested_naira,
-                "gateway_response": data["data"]["gateway_response"],
-                "channel": data["data"]["channel"],
-                "currency": data["data"]["currency"],
-            },
-        }
-
-    return {"message": "Payment failed", "data": data}
 
 
 #
