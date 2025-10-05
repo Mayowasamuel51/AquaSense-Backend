@@ -148,6 +148,23 @@ class GlobalErrorMiddleware(BaseHTTPMiddleware):
             )
 app.add_middleware(GlobalErrorMiddleware)
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Pick the first error
+    first_error = exc.errors()[0]
+    field = ".".join(str(loc) for loc in first_error["loc"] if loc not in ("body", "query", "path"))
+    message = f"{field}: {first_error['msg']}" if field else first_error["msg"]
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "status_code": 422,
+            "detail": message
+        }
+    )
+
+
 @app.get("/.well-known/assetlinks.json", response_class=FileResponse)
 async def serve_assetlinks():
     # go one folder up from main.py to project root
