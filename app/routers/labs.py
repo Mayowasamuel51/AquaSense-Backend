@@ -80,17 +80,30 @@ class LabCreate(BaseModel):
 
 @router.post("/")
 def create_lab_order(payload: dict, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Check if user exists
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Get the total amount (after discount)
+    discount_total = payload.get("discounttotal", 0)
+    # Check if the user has enough coins
+    if db_user.coins < discount_total:
+        raise HTTPException(status_code=400, detail="Insufficient coins balance")
+
+    # Deduct coins
+    db_user.coins -= discount_total
+
     # Create the main lab record
     new_lab = Labs(
-        username=f"{user.first_name} {user.last_name}",
+        username=f"{db_user.first_name} {db_user.last_name}",
         date=datetime.utcnow().strftime("%Y-%m-%d"),
         discount=payload.get("discount", 0),
         totalprice=payload.get("totalprice", 0),
-        discounttotal=payload.get("discounttotal", 0),
-        amount=payload.get("discounttotal", 0),  # amount after discount
+        discounttotal=discount_total,
+        amount=discount_total,  # amount after discount
         payment_method="coins+paystack",
         payment_status="pending",
-        user_id=user.id
+        user_id=db_user.id
     )
     db.add(new_lab)
     db.commit()
@@ -103,10 +116,19 @@ def create_lab_order(payload: dict, db: Session = Depends(get_db), user: User = 
             test_name = test_item["test"]
             price = test_item["price"]
             db.add(LabTest(title=title, test_name=test_name, price=price, lab_id=new_lab.id))
-
     db.commit()
 
-    return {"message": "Lab order created successfully", "lab_id": new_lab.id}
+    return {
+        "message": "Lab order created successfully, coins deducted",
+        "lab_id": new_lab.id,
+        "data": {
+            "id": db_user.id,
+            "first_name": db_user.first_name,
+            "last_name": db_user.last_name,
+            "email": db_user.email,
+            "coins": db_user.coins,
+        },
+    }
 
 
 # @router.post("/")
