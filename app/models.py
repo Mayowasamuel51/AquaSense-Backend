@@ -117,6 +117,10 @@ class User(Base):
     # ✅ add this only once
     # incomes = relationship("Income", back_populates="farmer")
 
+    support_tickets = relationship("SupportAgent", back_populates="user", cascade="all, delete-orphan")
+    # Reverse relationship to support tickets
+    support_ticket = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
+
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
@@ -541,6 +545,10 @@ class SupportAgent(Base):
     issue= Column(String(500), nullable=True)
     date = Column(String(250), nullable=False)
     username = Column(String(250), nullable=False)
+    # Link to User table
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="support_tickets")  # optional, for easy access
+
 
 
 
@@ -558,13 +566,15 @@ class VetSupport(Base):
 
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
-
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     category = Column(String(100), nullable=False)  # e.g., "Emergency", "Order", "Bulk Purchase"
     message = Column(String(1000), nullable=True)   # farmer’s message
     response = Column(String(1000), nullable=True)  # admin/expert reply
     status = Column(String(50), default="open")     # open, answered, closed
     farmer_name = Column(String(100), nullable=True)
+    # Link to User table
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="support_ticket")  # access the user object
 
 
 

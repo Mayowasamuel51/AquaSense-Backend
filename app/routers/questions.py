@@ -26,6 +26,7 @@ class SupportTicketOut(BaseModel):
     response: Optional[str] = None
     status: str
     farmer_name: Optional[str]
+    user_id:int
     class Config:
         from_attributes = True
     # model_config = dict(from_attributes=True)
@@ -88,6 +89,7 @@ def create_ticket(
         category=ticket.category,
         message=ticket_message,
         farmer_name=db_user.first_name,
+        user_id=db_user.id,
         response=auto_response,
         status="answered"
     )
@@ -104,6 +106,21 @@ def create_ticket(
 @router.get("/", response_model=List[SupportTicketOut])
 def list_tickets(db: Session = Depends(get_db)):
     return db.query(SupportTicket).all()
+
+class MainoutTicket(BaseModel):
+    data:List[SupportTicketOut]
+    message:str
+@router.get("/my-tickets", response_model=MainoutTicket)
+def list_my_tickets(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Returns only the support tickets submitted by the currently logged-in farmer.
+    """
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    tickets = db.query(SupportTicket).filter(SupportTicket.user_id == user.id).all()
+    return {"message":f"Hello {db_user.first_name} here your support messages",   "data":tickets}
+
 
 @router.put("/{ticket_id}/respond", response_model=SupportTicketOut)
 def respond_to_ticket(ticket_id: int, response: str = Body(...), db: Session = Depends(get_db)):

@@ -28,6 +28,7 @@ def create_lab(agent:Agent,   user: User = Depends(get_current_user),db: Session
         helpwith =agent.helpwith ,
         issue=agent.issue,
         date=agent.date,
+        user_id= db_user.id,
         username=db_user.first_name,  # captured here
     )
     db.add(agent_form)
