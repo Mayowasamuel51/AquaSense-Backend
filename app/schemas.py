@@ -487,7 +487,7 @@ class ProductCreate(BaseModel):
 
 class ProductOut(ProductCreate):
     id: int
-    featureexpiredate:str
+   
     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
     # model_config = dict(
     #     from_attributes=True,
