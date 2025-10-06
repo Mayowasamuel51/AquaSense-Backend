@@ -497,6 +497,35 @@ class CartOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+class VendorRegister(BaseModel):
+    email: EmailStr
+    password: str
+
+
+# ----------------- RESPONSE MODELS -----------------
+class VendorResponse(BaseModel):
+    id: int
+    email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    profilepicture: Optional[str] = None
+    gender: Optional[str] = None
+    nin: Optional[str] = None
+    kyc_status: Optional[str] = None
+    emailverified: Optional[bool] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    area: Optional[str] = None
+    latitude: Optional[str] = None
+    longitude: Optional[str] = None
+
+    class Config:
+        from_attributes = True   # allows returning SQLAlchemy models directly
 # class CartItem(BaseModel):
 #     product_id: str
 #     quantity: int

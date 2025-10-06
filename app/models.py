@@ -124,8 +124,28 @@ class User(Base):
     # 🧩 Add this line:
     labs = relationship("Labs", back_populates="user",  cascade="all, delete-orphan")
 
+class Vendor(Base):
+    __tablename__ = "vendor"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String(255), unique=True, nullable=False)
+    phone = Column(String(50), nullable=True)
+    profilepicture = Column(String(255), nullable=True)
+    kyc_status = Column(String(50), default="unverified")
+    emailverified = Column(Boolean, default=False)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    gender = Column(String(50), nullable=True)
+    password_hash = Column(String(255), nullable=False)
 
-
+    # New address/location fields
+    address = Column(String(255), nullable=True)
+    longitude = Column(String(100), nullable=True)
+    latitude = Column(String(100), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    area = Column(String(100), nullable=True)
+    # relationship to tokens
+    tokens = relationship("VerificationToken", back_populates="vendor")
 
 
 class VerificationToken(Base):
@@ -133,8 +153,11 @@ class VerificationToken(Base):
     id = Column(Integer,primary_key=True, index=True, autoincrement=True)
     token = Column(String(255), unique=True, index=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
+    vendor_id = Column(Integer, ForeignKey("vendor.id"))
     # expires_at = Column(DateTime, default=lambda: datetime.datetime.utcnow() + datetime.timedelta(hours=2))
     user = relationship("User", back_populates="tokens")
+    # relationship back to vendor
+    vendor = relationship("Vendor", back_populates="tokens")
 
 class Worker(Base):
     __tablename__ = "workers"

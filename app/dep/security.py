@@ -1,6 +1,5 @@
 from datetime import datetime, timezone, timedelta
 import jwt
-# from jose import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -67,7 +66,7 @@ def get_current_user(
 
     return user
 
-
+# from jose import jwt
 # Verification token lifetime (e.g. 30 minutes)
 VERIFY_TOKEN_TTL = 300000
 
