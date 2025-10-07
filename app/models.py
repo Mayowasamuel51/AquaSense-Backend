@@ -146,7 +146,36 @@ class Vendor(Base):
     area = Column(String(100), nullable=True)
     # relationship to tokens
     tokens = relationship("VerificationToken", back_populates="vendor")
+    products = relationship("Product", back_populates="vendor", cascade="all, delete-orphan")
 
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(String(500), nullable=True)
+    image = Column(String(255), nullable=True)
+    price = Column(Float, nullable=False)
+    category = Column(String(100), nullable=False)
+    price_from = Column(Float, nullable=True)
+    price_to = Column(Float, nullable=True)
+    discount_percent = Column(Float, nullable=True, default=0.0)
+    discount_amount = Column(Float, nullable=True, default=0.0)
+    vendor_id = Column(Integer, ForeignKey("vendor.id"))  # link to vendor
+    vendor = relationship("Vendor", back_populates="products")
+    types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
+
+
+class ProductType(Base):
+    __tablename__ = "product_types"
+    id = Column(Integer, primary_key=True, index=True)
+    type_value = Column(String(255), nullable=False)
+    value_measurement = Column(String(100), nullable=True)
+    value_size = Column(String(100), nullable=True)
+    value_price = Column(Float, nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    product = relationship("Product", back_populates="types")
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
@@ -479,25 +508,21 @@ class Stocking(Base):
     batch = relationship("Batch", back_populates="stockings")
     unit = relationship("Unit", back_populates="stockings")
 
-
-
-
-
-class Product(Base):
-    __tablename__ = "products"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(250), nullable=False)
-    description = Column(String(250), nullable=True)
-    image = Column(String(250), nullable=True)
-    price = Column(Float, nullable=False)
-    category = Column(String(250), nullable=False)
-    featured = Column(Boolean, default=False , nullable=True)
-    featureexpiredate = Column(Boolean , default=False, nullable=True)
-    quantity = Column(Integer, default=0)
-    # relationships
-
-    price_range = relationship("PriceRange", uselist=False,  back_populates="product")
-    types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
+# class Product(Base):
+#     __tablename__ = "products"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     title = Column(String(250), nullable=False)
+#     description = Column(String(250), nullable=True)
+#     image = Column(String(250), nullable=True)
+#     price = Column(Float, nullable=False)
+#     category = Column(String(250), nullable=False)
+#     featured = Column(Boolean, default=False , nullable=True)
+#     featureexpiredate = Column(Boolean , default=False, nullable=True)
+#     quantity = Column(Integer, default=0)
+#     # relationships
+#
+#     price_range = relationship("PriceRange", uselist=False,  back_populates="product")
+#     types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
 
 # class Category(Base):
 #     __tablename__ = "categories"
@@ -507,24 +532,6 @@ class Product(Base):
 #     # Relationship back to products
 #     products = relationship("Product", back_populates="category_obj")
 
-class PriceRange(Base):
-    __tablename__ = "price_ranges"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    from_ = Column("from", Float, nullable=False)
-    to = Column(Float, nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"))
-    product = relationship("Product", back_populates="price_range")
-
-
-class ProductType(Base):
-    __tablename__ = "product_types"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    typeValue = Column(String(230), nullable=False)
-    valueMeasurement = Column(String(250), nullable=False)
-    valuePrice = Column(Float, nullable=False)
-    quantity = Column(Integer, default=0)
-    product_id = Column(Integer, ForeignKey("products.id"))
-    product = relationship("Product", back_populates="types")
 
 
 class Transaction(Base):
@@ -540,15 +547,15 @@ class Transaction(Base):
     items_json = Column(JSON, nullable=True)  # 🆕 store cart items
 
 
-class Cart(Base):
-    __tablename__ = "cart"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    type_id = Column(Integer, ForeignKey("product_types.id"), nullable=True)
-    quantity = Column(Integer, nullable=False)
-
-    product = relationship("Product")
-    selected_type = relationship("ProductType")
+# class Cart(Base):
+#     __tablename__ = "cart"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+#     type_id = Column(Integer, ForeignKey("product_types.id"), nullable=True)
+#     quantity = Column(Integer, nullable=False)
+#
+#     product = relationship("Product")
+#     selected_type = relationship("ProductType")
 # class Cart(Base):
 #     __tablename__ = "cart"
 #     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -661,13 +668,24 @@ class LabTest(Base):
 
 
 
+# class PriceRange(Base):
+#     __tablename__ = "price_ranges"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     from_ = Column("from", Float, nullable=False)
+#     to = Column(Float, nullable=False)
+#     product_id = Column(Integer, ForeignKey("products.id"))
+#     product = relationship("Product", back_populates="price_range")
 
 
-
-
-
-
-
+# class ProductType(Base):
+#     __tablename__ = "product_types"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     typeValue = Column(String(230), nullable=False)
+#     valueMeasurement = Column(String(250), nullable=False)
+#     valuePrice = Column(Float, nullable=False)
+#     quantity = Column(Integer, default=0)
+#     product_id = Column(Integer, ForeignKey("products.id"))
+#     product = relationship("Product", back_populates="types")
 
 
 

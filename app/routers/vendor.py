@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -24,36 +26,68 @@ class MainoutVendor(BaseModel):
     data:VendorResponse
     message:str
 
+class VendorLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class VendorInfo(BaseModel):
+    id: int
+    email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    profilepicture: Optional[str] = None
+    gender: Optional[str] = None
+    nin: Optional[str] = None
+    kyc_status: Optional[str] = None
+    emailverified: Optional[bool] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    area: Optional[str] = None
+    latitude: Optional[str] = None
+    longitude: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class VendorLoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    vendor: VendorInfo
+
 
 @router.post("/register", response_model=MainoutVendor)
 def register_vendor(body: VendorRegister, db: Session = Depends(get_db)):
     existing = db.query(Vendor).filter(Vendor.email == body.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-
     hashed_pw = argon2.hash(body.password)
-
     vendor = Vendor(email=body.email, password_hash=hashed_pw)
     db.add(vendor)
     db.commit()
     db.refresh(vendor)
-
     return {"message":"Vendor created ", "data":vendor }  # FastAPI + Pydantic handles serialization safely
 
 
 # ----------- LOGIN VENDOR -----------
-@router.post("/login")
-def login_vendor(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    vendor = db.query(Vendor).filter(Vendor.email == form_data.username).first()
+@router.post("/login", response_model=VendorLoginResponse)
+def login_vendor(body: VendorLogin, db: Session = Depends(get_db)):
+    vendor = db.query(Vendor).filter(Vendor.email == body.email).first()
     if not vendor:
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    if not argon2.verify(form_data.password, vendor.password_hash):
+    if not argon2.verify(body.password, vendor.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_vendor_token({"sub": vendor.email})
-    return {"access_token": token, "token_type": "bearer"}
 
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "vendor": vendor,   # FastAPI + Pydantic will handle serialization safely
+    }
 
 # ----------- GET CURRENT VENDOR PROFILE -----------
 @router.get("/me", response_model=VendorResponse)

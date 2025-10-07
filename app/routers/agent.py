@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from passlib.hash import argon2
 from uuid import uuid4
 from ..database  import get_db
-from ..models import User, Product, PriceRange, Cart, ProductType, Labs, SupportAgent
-from ..schemas import (UserOut, FarmBase, UserCreate, ProductOut)
+from ..models import User, Product, ProductType, Labs, SupportAgent
+from ..schemas import (UserOut, FarmBase, UserCreate)
 from typing import List
 router = APIRouter(prefix="/supportagent", tags=["supportagent"])
 from ..dep.security import create_tokens , get_current_user

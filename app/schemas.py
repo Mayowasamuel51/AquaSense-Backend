@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, HttpUrl
 from typing import Optional ,List
 
 
@@ -453,52 +453,101 @@ class CategoryOut(CategoryBase):
     id: int
 
 
-class PriceRangeBase(BaseModel):
-    from_: float = Field(..., alias="from")
-    to: float
-    class Config:
-        from_attributes = True
-        validate_by_name = True  #
+# class PriceRangeBase(BaseModel):
+#     from_: float = Field(..., alias="from")
+#     to: float
+#     class Config:
+#         from_attributes = True
+#         validate_by_name = True  #
+#
+# class ProductTypeBase(BaseModel):
+#     typeValue: str
+#     valueMeasurement: str
+#     valuePrice: float
+#     quantity: int = 0
+#     class Config:
+#         from_attributes = True
+#
+# class ProductCreate(BaseModel):
+#     title: str
+#     description: Optional[str]
+#     image: Optional[str]
+#     price: float
+#     category: str
+#     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
+#     types: Optional[List[ProductTypeBase]] = []   # 👈 optional with default empty list
+#
+# class ProductOut(ProductCreate):
+#     id: int
+#     priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
+#     class Config:
+#         from_attributes = True
+#
+# class CartCreate(BaseModel):
+#     product_id: int
+#     quantity: int
+#     type_id: Optional[int] = None
+#
+# class CartOut(BaseModel):
+#     id: int
+#     quantity: int
+#     product: ProductOut
+#     selected_type: Optional[ProductTypeBase]
+#
+#     class Config:
+#         from_attributes = True
 
-class ProductTypeBase(BaseModel):
-    typeValue: str
-    valueMeasurement: str
-    valuePrice: float
-    quantity: int = 0
+
+
+class PriceRange(BaseModel):
+    from_: Optional[float] = None
+    to: Optional[float] = None
     class Config:
-        from_attributes = True
+        fields = {"from_": "from"}  # allows "from" in JSON input
+
+class ProductTypeCreate(BaseModel):
+    typeValue: str
+    valueMeasurement: Optional[str] = None
+    valuePrice: float
+
 
 class ProductCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    image: Optional[HttpUrl] = None
+    price: float
+    category: str
+    price_range: Optional[PriceRange] = None
+    discount_percent: Optional[float] = 0.0
+    discount_amount: Optional[float] = 0.0
+    types: List[ProductTypeCreate]
+
+
+class ProductTypeResponse(BaseModel):
+    id: int
+    type_value: str
+    value_measurement: Optional[str]
+    value_price: float
+
+    class Config:
+        from_attributes = True
+
+
+class ProductResponse(BaseModel):
+    id: int
     title: str
     description: Optional[str]
     image: Optional[str]
     price: float
     category: str
-    priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
-    types: Optional[List[ProductTypeBase]] = []   # 👈 optional with default empty list
-
-class ProductOut(ProductCreate):
-    id: int
-    priceRange: Optional[PriceRangeBase] = Field(None, alias="price_range")
-    class Config:
-        from_attributes = True
-
-class CartCreate(BaseModel):
-    product_id: int
-    quantity: int
-    type_id: Optional[int] = None
-
-
-class CartOut(BaseModel):
-    id: int
-    quantity: int
-    product: ProductOut
-    selected_type: Optional[ProductTypeBase]
+    price_from: Optional[float]
+    price_to: Optional[float]
+    discount_percent: Optional[float]
+    discount_amount: Optional[float]
+    types: List[ProductTypeResponse]
 
     class Config:
         from_attributes = True
-
-
 
 class VendorRegister(BaseModel):
     email: EmailStr
