@@ -633,23 +633,42 @@ class TestItem(Base):
     # Link back to category
     category = relationship("TestCategory", back_populates="tests")
 
+#
+# class Labs(Base):
+#     __tablename__ = "labs"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     username = Column(String(250), nullable=False)
+#     date = Column(String(250), nullable=False)
+#     discount = Column(Integer, default=0 ,  nullable=True)
+#     totalprice = Column(Integer, nullable=False)
+#     discounttotal = Column(Integer, nullable=True)
+#     amount = Column(Integer, nullable=False)
+#     payment_method = Column(String(50), nullable=False)
+#     transaction_reference = Column(String(255), nullable=True)
+#     payment_status = Column(String(50), default="pending")
+#     created_at = Column(DateTime, default=datetime.utcnow)
+#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+#     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     # 🧩 Relationship to lab tests
+#     tests = relationship("LabTest", back_populates="lab", cascade="all, delete-orphan")
+#     # 🧩 Relationship back to User
+#     user = relationship("User", back_populates="labs")
+
 
 class Labs(Base):
     __tablename__ = "labs"
+
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     username = Column(String(250), nullable=False)
-    date = Column(String(250), nullable=False)
-    discount = Column(Integer, default=0)
-    totalprice = Column(Integer, nullable=False)
-    discounttotal = Column(Integer, nullable=False)
-    amount = Column(Integer, nullable=False)
-    payment_method = Column(String(50), nullable=False)
+    preferred_date = Column(String(250), nullable=False)
+    totalPrice = Column(Float, nullable=False)
+    payment_method = Column(String(50), nullable=True)
     transaction_reference = Column(String(255), nullable=True)
     payment_status = Column(String(50), default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    # 🧩 Relationship to lab tests
+    # 🧩 Relationship to lab tests (categories/tests)
     tests = relationship("LabTest", back_populates="lab", cascade="all, delete-orphan")
     # 🧩 Relationship back to User
     user = relationship("User", back_populates="labs")
@@ -657,14 +676,24 @@ class Labs(Base):
 
 class LabTest(Base):
     __tablename__ = "lab_tests"
-
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    test_name = Column(String(255), nullable=False)
-    price = Column(Float, nullable=False)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+    # ✅ match payload
+    category_title = Column(String(255), nullable=False)  # e.g. "Water Quality Test"
+    test_id = Column(Integer, nullable=False)  # testListAsMap test id
+    test_name = Column(String(255), nullable=False)  # e.g. "pH Level"
+    test_price = Column(Float, nullable=False)
 
     lab = relationship("Labs", back_populates="tests")
+#
+# class LabTest(Base):
+#     __tablename__ = "lab_tests"
+#     id = Column(Integer, primary_key=True, index=True)
+#     title = Column(String(255), nullable=False)
+#     test_name = Column(String(255), nullable=False)
+#     price = Column(Float, nullable=False)
+#     lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+#     lab = relationship("Labs", back_populates="tests")
 
 
 

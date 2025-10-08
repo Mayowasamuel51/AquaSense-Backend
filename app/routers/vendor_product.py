@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 import jwt
 from ..database import get_db
@@ -11,8 +12,15 @@ router = APIRouter(prefix="/vendor/products", tags=["Vendor Products"])
 SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = "HS256"
 
-# Helper: Decode vendor token
-def get_current_vendor(token: str, db: Session) -> Vendor:
+# Define the Bearer auth dependency
+security = HTTPBearer()
+
+
+def get_current_vendor(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> Vendor:
+    token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
@@ -28,20 +36,17 @@ def get_current_vendor(token: str, db: Session) -> Vendor:
     return vendor
 
 
-# 🧩 CREATE PRODUCT
 @router.post("/", response_model=ProductResponse)
 def create_product(
     body: ProductCreate,
-    token: str,
+    vendor: Vendor = Depends(get_current_vendor),
     db: Session = Depends(get_db),
 ):
-    vendor = get_current_vendor(token, db)
-
     # Extract price range safely
     price_from = body.price_range.from_ if body.price_range else None
     price_to = body.price_range.to if body.price_range else None
 
-    # Create main product
+    # Create product
     product = Product(
         title=body.title,
         description=body.description,
@@ -55,7 +60,7 @@ def create_product(
         vendor_id=vendor.id,
     )
 
-    # Add product types (variations)
+    # Add product types
     for t in body.types:
         ptype = ProductType(
             type_value=t.typeValue,
