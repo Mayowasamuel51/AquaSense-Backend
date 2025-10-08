@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import jwt
 from ..database import get_db
 from ..config import settings
@@ -89,26 +89,31 @@ class MainProductOutResponse (BaseModel):
     message:str
     data:List[ProductResponse]
 
-@router.get("/", response_model=MainProductOutResponse)
-def get_products(
-    db: Session = Depends(get_db),
-    sort: Optional[str] = Query(None, description="Sort: newest, featured, price_low, price_high")
-):
-    query = db.query(Product)
 
-    # Apply sorting
-    if sort == "newest":
-        query = query.order_by(Product.id.desc())  # assuming higher ID = newer
-    elif sort == "featured":
-        query = query.filter(Product.featured == True).order_by(Product.id.desc())
-    elif sort == "price_low":
-        query = query.order_by(Product.price.asc())
-    elif sort == "price_high":
-        query = query.order_by(Product.price.desc())
-    products = query.all()
-    if not products:
-        raise HTTPException(status_code=404, detail="No products found in the database")
-    return {"message": "showing all products", "data": products}
+@router.get("/", response_model=list[ProductResponse])
+def get_all_products(db: Session = Depends(get_db)):
+    products = db.query(Product).options(joinedload(Product.types)).all()
+    return products
+# @router.get("/", response_model=MainProductOutResponse)
+# def get_products(
+#     db: Session = Depends(get_db),
+#     sort: Optional[str] = Query(None, description="Sort: newest, featured, price_low, price_high")
+# ):
+#     query = db.query(Product)
+#
+#     # Apply sorting
+#     if sort == "newest":
+#         query = query.order_by(Product.id.desc())  # assuming higher ID = newer
+#     elif sort == "featured":
+#         query = query.filter(Product.featured == True).order_by(Product.id.desc())
+#     elif sort == "price_low":
+#         query = query.order_by(Product.price.asc())
+#     elif sort == "price_high":
+#         query = query.order_by(Product.price.desc())
+#     products = query.all()
+#     if not products:
+#         raise HTTPException(status_code=404, detail="No products found in the database")
+#     return {"message": "showing all products", "data": products}
 #
 # @router.get("/{product_id}", response_model=MainProductOut)
 # def get_product(product_id: int, db: Session = Depends(get_db)):

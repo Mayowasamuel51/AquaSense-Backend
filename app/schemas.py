@@ -535,6 +535,7 @@ class ProductTypeResponse(BaseModel):
 
 class ProductResponse(BaseModel):
     id: int
+    vendor_id: int  # ✅ Add this
     title: str
     description: Optional[str]
     image: Optional[str]
@@ -572,6 +573,7 @@ class VendorResponse(BaseModel):
     area: Optional[str] = None
     latitude: Optional[str] = None
     longitude: Optional[str] = None
+
 
     class Config:
         from_attributes = True   # allows returning SQLAlchemy models directly

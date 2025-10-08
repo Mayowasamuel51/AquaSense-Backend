@@ -159,6 +159,10 @@ class Product(Base):
     category = Column(String(100), nullable=False)
     price_from = Column(Float, nullable=True)
     price_to = Column(Float, nullable=True)
+    # New fields ↓↓↓
+    featured = Column(Boolean, default=False)
+    featured_expiry_date = Column(DateTime, nullable=True)
+
     discount_percent = Column(Float, nullable=True, default=0.0)
     discount_amount = Column(Float, nullable=True, default=0.0)
     vendor_id = Column(Integer, ForeignKey("vendor.id"))  # link to vendor
