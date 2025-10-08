@@ -128,7 +128,7 @@ def create_lab_order(
 # -------------------------------
 # ✅ Verify Paystack Payment
 # -------------------------------
-@router.get("/labs/verify/{reference}")
+@router.get("/verify/{reference}")
 def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
     url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
@@ -150,7 +150,7 @@ def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
             "message": "Payment successful",
             "lab_order": {
                 "id": lab.id,
-                "total_price": lab.total_price,
+                "totalPrice": lab.totalPrice,
                 "payment_status": lab.payment_status,
                 "payment_method": lab.payment_method,
                 "transaction_reference": lab.transaction_reference,
