@@ -128,7 +128,7 @@ def create_lab_order(
 # -------------------------------
 # ✅ Verify Paystack Payment
 # -------------------------------
-@router.get("/verify/{reference}")
+@router.get("/labs/verify/{reference}")
 def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
     url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
