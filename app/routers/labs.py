@@ -1,12 +1,13 @@
 import os
+import hmac
+import hashlib
 import requests
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException , Request
 from sqlalchemy.orm import Session
 from uuid import uuid4
 from typing import List, Optional
 from pydantic import BaseModel
-
 from ..database import get_db
 from ..models import User, Labs, LabTest
 from ..dep.security import get_current_user
@@ -171,6 +172,58 @@ def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
 
     return {"message": "Payment failed", "data": data}
 
+@router.post("/paystack/webhook")
+async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
+    """Secure Paystack webhook endpoint"""
+    try:
+        # 1️⃣ Get raw body (used for signature verification)
+        body = await request.body()
+        signature = request.headers.get("x-paystack-signature")
+
+        if not signature:
+            raise HTTPException(status_code=400, detail="Missing Paystack signature")
+
+        # 2️⃣ Compute signature to verify authenticity
+        computed_signature = hmac.new(
+            PAYSTACK_SECRET_KEY.encode(),
+            body,
+            hashlib.sha512
+        ).hexdigest()
+
+        if computed_signature != signature:
+            raise HTTPException(status_code=403, detail="Invalid Paystack signature")
+
+        # 3️⃣ Parse JSON payload
+        payload = await request.json()
+        event = payload.get("event")
+        data = payload.get("data", {})
+
+        reference = data.get("reference")
+        amount_paid = data.get("amount", 0) / 100  # kobo → naira
+        status = data.get("status")
+
+        # 4️⃣ Find matching lab order
+        lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
+        if not lab:
+            raise HTTPException(status_code=404, detail="Lab order not found")
+
+        # 5️⃣ Handle Paystack events
+        if event == "charge.success" and status == "success":
+            lab.payment_status = "success"
+            db.commit()
+            return {"status": True, "message": "Payment successful and updated"}
+
+        elif event == "charge.failed":
+            lab.payment_status = "failed"
+            db.commit()
+            return {"status": True, "message": "Payment failed and updated"}
+
+        # 6️⃣ Handle other events gracefully
+        return {"status": True, "message": f"Event '{event}' received but not handled"}
+
+    except Exception as e:
+        print("Webhook error:", e)
+        return {"status": False, "message": str(e)}
 # @router.post("/")
 # def create_lab_order(
 #     lab: LabCreate,
