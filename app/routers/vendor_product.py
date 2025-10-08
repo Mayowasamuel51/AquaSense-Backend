@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import jwt
 from ..database import get_db
@@ -36,7 +39,11 @@ def get_current_vendor(
     return vendor
 
 
-@router.post("/", response_model=ProductResponse)
+class MainVendorProductOut(BaseModel):
+    message:str
+    data:ProductResponse
+
+@router.post("/", response_model=MainVendorProductOut)
 def create_product(
     body: ProductCreate,
     vendor: Vendor = Depends(get_current_vendor),
@@ -73,4 +80,44 @@ def create_product(
     db.commit()
     db.refresh(product)
 
-    return product
+    return {"message":"You have created a product ","data": product}
+
+
+
+
+class MainProductOutResponse (BaseModel):
+    message:str
+    data:List[ProductResponse]
+
+@router.get("/", response_model=MainProductOutResponse)
+def get_products(
+    db: Session = Depends(get_db),
+    sort: Optional[str] = Query(None, description="Sort: newest, featured, price_low, price_high")
+):
+    query = db.query(Product)
+
+    # Apply sorting
+    if sort == "newest":
+        query = query.order_by(Product.id.desc())  # assuming higher ID = newer
+    elif sort == "featured":
+        query = query.filter(Product.featured == True).order_by(Product.id.desc())
+    elif sort == "price_low":
+        query = query.order_by(Product.price.asc())
+    elif sort == "price_high":
+        query = query.order_by(Product.price.desc())
+    products = query.all()
+    if not products:
+        raise HTTPException(status_code=404, detail="No products found in the database")
+    return {"message": "showing all products", "data": products}
+#
+# @router.get("/{product_id}", response_model=MainProductOut)
+# def get_product(product_id: int, db: Session = Depends(get_db)):
+#     product = db.query(Product).filter(Product.id == product_id).first()
+#     if not product:
+#         raise HTTPException(
+#             status_code=404,
+#             detail=f"Product with id {product_id} not found"
+#         )
+#     return {"message": "Product retrieved successfully", "data": product}
+
+

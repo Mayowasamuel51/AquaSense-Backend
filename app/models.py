@@ -151,7 +151,6 @@ class Vendor(Base):
 
 class Product(Base):
     __tablename__ = "products"
-
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(String(500), nullable=True)
