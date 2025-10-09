@@ -2,9 +2,9 @@ import os
 import requests
 import hmac
 import hashlib
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from datetime import datetime
 from ..database import get_db
 from ..models import User, Labs, LabTest
 from ..schemas import UserOut
@@ -13,34 +13,47 @@ from ..dep.security import get_current_user
 router = APIRouter(prefix="/labs", tags=["labs"])
 
 PAYSTACK_SECRET_KEY = os.getenv(
-    "PAYSTACK_SECRET_KEY", "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
+    "PAYSTACK_SECRET_KEY",
+    "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
 )
 PAYSTACK_BASE_URL = "https://api.paystack.co"
+
 
 # ------------------------------------------------
 # 🔧 Helper: Initialize Paystack
 # ------------------------------------------------
-def initialize_paystack(email: str, amount: float, channel: str):
-    url = f"{PAYSTACK_BASE_URL}/transaction/initialize"
-    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+def initialize_bank_transfer(email: str, amount: float):
+    url = f"{PAYSTACK_BASE_URL}/charge"
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json",
+    }
+    # Expire the account after 30 minutes
+    expires_at = (datetime.utcnow() + timedelta(minutes=30)).isoformat() + "Z"
 
     payload = {
         "email": email,
         "amount": int(amount * 100),  # Convert to Kobo
+        "currency": "NGN",
+        "bank_transfer": {
+            "create": True,  # ✅ tells Paystack to create a dedicated transfer account
+            "account_expires_at": expires_at
+        }
     }
 
-    if channel == "bank_transfer":
-        payload["channels"] = ["bank_transfer"]
-    elif channel == "card":
-        payload["channels"] = ["card"]
-    else:
-        raise HTTPException(status_code=400, detail="Invalid payment channel")
-
     res = requests.post(url, json=payload, headers=headers)
-    if res.status_code != 200:
-        raise HTTPException(status_code=400, detail="Paystack init failed")
 
-    return res.json()["data"]
+    try:
+        data = res.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail=f"Invalid Paystack response: {res.text[:200]}")
+
+    print("🔍 Paystack /charge response:", data)
+
+    if not data.get("status"):
+        raise HTTPException(status_code=400, detail=data.get("message", "Paystack bank transfer init failed"))
+
+    return data["data"]
 
 # ------------------------------------------------
 # 🧾 Create Lab Order (Bank Transfer or Card)
@@ -49,28 +62,23 @@ def initialize_paystack(email: str, amount: float, channel: str):
 def create_lab_order(
     payload: dict,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
 ):
-    # Extract info
-    preferred_date = payload.get("preferredDate")
     total_price = payload.get("totalPrice", 0)
     lab_tests = payload.get("labTests", [])
-    payment_channel = payload.get("payment_channel", "bank_transfer")  # default to bank_transfer
-
-    if not lab_tests:
-        raise HTTPException(status_code=400, detail="No lab tests provided")
 
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
+    if not lab_tests:
+        raise HTTPException(status_code=400, detail="No lab tests provided")
 
-    # 💾 Create lab record
+    # 💾 Create Lab record
     new_lab = Labs(
         username=f"{db_user.first_name} {db_user.last_name}",
-        date=preferred_date or datetime.utcnow().strftime("%Y-%m-%d"),
-        totalprice=total_price,
-        amount=total_price,
-        payment_method=payment_channel,
+        preferred_date=payload.get("preferredDate"),
+        totalPrice=total_price,
+        payment_method="bank_transfer",
         payment_status="pending",
         user_id=db_user.id,
     )
@@ -80,66 +88,85 @@ def create_lab_order(
 
     # 🧪 Save test items
     for category in lab_tests:
-        title = category.get("title")
+        category_title = category.get("title")
         for test_item in category.get("tests", []):
             db.add(
                 LabTest(
-                    title=title,
-                    test_name=test_item["name"],
-                    price=test_item["price"],
                     lab_id=new_lab.id,
+                    category_title=category_title,
+                    test_id=test_item.get("id") or 0,
+                    test_name=test_item.get("name"),
+                    test_price=test_item.get("price", 0.0),
                 )
             )
     db.commit()
 
-    # 💳 Initialize Paystack
-    paystack_data = initialize_paystack(db_user.email, total_price, payment_channel)
+    # 💳 Initialize Paystack bank transfer
+    paystack_data = initialize_bank_transfer(db_user.email, total_price)
     reference = paystack_data["reference"]
+
+    # Store reference
     new_lab.transaction_reference = reference
     db.commit()
 
+    # ✅ Immediately verify to get account details
+    verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+    verify_res = requests.get(verify_url, headers=headers).json()
+
+    print("🔎 Paystack Verify Response:", verify_res)
+
+    bank_info = {}
+    if verify_res.get("data") and verify_res["data"].get("authorization"):
+        # In some cases, account info is here
+        bank_info = verify_res["data"]["authorization"]
+    elif verify_res.get("data") and verify_res["data"].get("bank"):
+        bank_info = verify_res["data"]["bank"]
+
     response_data = {
-        "message": f"{payment_channel.replace('_', ' ').title()} payment initialized.",
+        "message": "Bank Transfer payment initialized.",
         "lab_id": new_lab.id,
         "reference": reference,
         "amount": total_price,
-        "payment_channel": payment_channel,
         "user": UserOut.model_validate(db_user).model_dump(),
+        "bank_details": {
+            "account_name": bank_info.get("account_name", "Pending..."),
+            "account_number": bank_info.get("account_number", "Pending..."),
+            "bank_name": bank_info.get("bank_name", "Pending..."),
+        },
     }
-
-    if payment_channel == "bank_transfer":
-        bank_info = paystack_data.get("bank", {})
-        response_data["bank_details"] = {
-            "account_name": bank_info.get("account_name", "N/A"),
-            "account_number": bank_info.get("account_number", "N/A"),
-            "bank_name": bank_info.get("bank_name", "N/A"),
-        }
-    else:
-        response_data["checkout_url"] = paystack_data["authorization_url"]
 
     return response_data
 
 # ------------------------------------------------
-# ✅ Verify Payment (called by “I have paid” button)
+# ✅ Verify Payment (for “I have paid” button)
 # ------------------------------------------------
 @router.get("/verify/{reference}")
 def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
+    """
+    Called when user clicks 'I have paid'
+    """
     url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-
     res = requests.get(url, headers=headers)
     data = res.json()
 
+    if not data.get("status"):
+        raise HTTPException(status_code=400, detail=data.get("message", "Verification failed"))
+
+    transaction = data.get("data", {})
+    status = transaction.get("status")
+
     lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
     if not lab:
-        raise HTTPException(404, "Lab order not found")
+        raise HTTPException(status_code=404, detail="Lab order not found")
 
-    if data.get("data", {}).get("status") == "success":
+    # ✅ If Paystack confirms success
+    if status == "success":
         lab.payment_status = "success"
         db.commit()
-
         return {
-            "message": "Payment successful",
+            "message": "✅ Payment successful",
             "lab_order": {
                 "id": lab.id,
                 "totalprice": lab.totalprice,
@@ -147,19 +174,39 @@ def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
                 "payment_method": lab.payment_method,
                 "transaction_reference": lab.transaction_reference,
             },
-            "paystack_response": data["data"],
+            "paystack_response": transaction,
         }
 
-    return {"message": "Payment not completed", "status": data.get("data", {}).get("status")}
+    # ⚠️ If payment still pending or awaiting transfer
+    bank_info = {}
+    if transaction.get("status") in ["pending", "pending_bank_transfer"]:
+        bank_info = {
+            "account_name": transaction.get("account_name", "Pending..."),
+            "account_number": transaction.get("account_number", "Pending..."),
+            "bank_name": transaction.get("bank", {}).get("name", "Pending..."),
+        }
+
+    return {
+        "message": f"Payment status: {status}",
+        "status": status,
+        "bank_details": bank_info,
+    }
+
+
 
 # ------------------------------------------------
 # 🕊️ Webhook (Paystack calls this automatically)
 # ------------------------------------------------
+
 @router.post("/paystack/webhook")
 async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Automatically called by Paystack when payment completes.
+    """
     body = await request.body()
     signature = request.headers.get("x-paystack-signature")
 
+    # ✅ Verify Paystack signature
     expected_signature = hmac.new(
         PAYSTACK_SECRET_KEY.encode(),
         body,
@@ -169,16 +216,25 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
     if signature != expected_signature:
         raise HTTPException(status_code=403, detail="Invalid Paystack signature")
 
-    data = (await request.json()).get("data", {})
+    event = await request.json()
+    data = event.get("data", {})
     reference = data.get("reference")
     status = data.get("status")
 
+    print("🔔 Paystack Webhook Received:", event)
+
+    # Update your lab order
     lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
-    if lab and status == "success":
+    if not lab:
+        return {"status": "ignored", "message": "Reference not found"}
+
+    if status == "success":
         lab.payment_status = "success"
         db.commit()
+        print(f"✅ Payment confirmed for lab ID {lab.id}")
 
     return {"status": "ok"}
+
 
 
 
