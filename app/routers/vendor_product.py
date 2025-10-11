@@ -10,7 +10,7 @@ from ..config import settings
 from ..models import Vendor, Product, ProductType
 from ..schemas import ProductCreate, ProductResponse
 
-router = APIRouter(prefix="/vendor/products", tags=["Vendor Products"])
+router = APIRouter(prefix="/products", tags=["Vendor Products"])
 
 SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = "HS256"

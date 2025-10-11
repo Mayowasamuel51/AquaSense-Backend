@@ -319,8 +319,6 @@ def get_all_labs(db: Session = Depends(get_db)):
 
 
 
-
-
 # import os
 # import requests
 # import hmac
