@@ -89,11 +89,15 @@ class MainProductOutResponse (BaseModel):
     message:str
     data:List[ProductResponse]
 
-
-@router.get("/", response_model=list[ProductResponse])
+@router.get("/", response_model=MainProductOutResponse)
 def get_all_products(db: Session = Depends(get_db)):
     products = db.query(Product).options(joinedload(Product.types)).all()
-    return products
+    return {
+        "message":"showing all product",
+        "data":products
+    }
+
+
 # @router.get("/", response_model=MainProductOutResponse)
 # def get_products(
 #     db: Session = Depends(get_db),
