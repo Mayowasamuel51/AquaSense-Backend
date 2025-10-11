@@ -130,7 +130,6 @@ def create_lab_order(
         db.commit()
         raise HTTPException(status_code=400, detail=f"Paystack initialization failed: {str(e)}")
 
-
 # -------------------------------
 # ✅ Verify Paystack Payment
 # -------------------------------
@@ -298,7 +297,6 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
 
 from fastapi.responses import HTMLResponse, JSONResponse
 
-
 @router.get("/paystack/callback")
 def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
     """Callback URL that Paystack redirects to after payment"""
@@ -306,11 +304,9 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
     res = requests.get(verify_url, headers=headers)
     data = res.json()
-
     lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
     if not lab:
         raise HTTPException(status_code=404, detail="Lab order not found")
-
     status = data.get("data", {}).get("status", "failed")
     amount_paid = data.get("data", {}).get("amount", 0) / 100
     channel = data.get("data", {}).get("channel", "unknown")

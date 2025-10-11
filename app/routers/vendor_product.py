@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -37,8 +38,6 @@ def get_current_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
 
     return vendor
-
-
 class MainVendorProductOut(BaseModel):
     message:str
     data:ProductResponse
@@ -82,20 +81,87 @@ def create_product(
 
     return {"message":"You have created a product ","data": product}
 
+class VendorPublic(BaseModel):
+    id: int
+    email: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    phone: Optional[str]
+    city: Optional[str]
+    address: Optional[str]
+    state: Optional[str]
+    area: Optional[str]
+    profilepicture: Optional[str]
+    kyc_status: Optional[str]
+
+    class Config:
+        from_attributes = True
 
 
+# --- Product Type ---
+class ProductTypeResponse(BaseModel):
+    id: int
+    type_value: str
+    value_measurement: str
+    value_price: float
 
-class MainProductOutResponse (BaseModel):
-    message:str
-    data:List[ProductResponse]
+    class Config:
+        from_attributes = True
+
+
+# --- Product ---
+class ProductResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    image: Optional[str]
+    price: float
+    category: Optional[str]
+    price_from: Optional[float]
+    price_to: Optional[float]
+    discount_percent: Optional[float]
+    discount_amount: Optional[float]
+    featured: Optional[bool] = False 
+    featured_expiry_date: Optional[datetime]
+    vendor: VendorPublic                 # ✅ include vendor info
+    types: List[ProductTypeResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# --- Main Response Wrapper ---
+class MainProductOutResponse(BaseModel):
+    message: str
+    data: List[ProductResponse]
+
+
 
 @router.get("/", response_model=MainProductOutResponse)
 def get_all_products(db: Session = Depends(get_db)):
-    products = db.query(Product).options(joinedload(Product.types)).all()
+    products = db.query(Product).options(
+        joinedload(Product.types),
+        joinedload(Product.vendor)  # ✅ load vendor relationship
+    ).all()
+
     return {
-        "message":"showing all product",
-        "data":products
+        "message": "showing all product",
+        "data": products
     }
+
+#
+#
+# class MainProductOutResponse (BaseModel):
+#     message:str
+#     data:List[ProductResponse]
+#
+# @router.get("/", response_model=MainProductOutResponse)
+# def get_all_products(db: Session = Depends(get_db)):
+#     products = db.query(Product).options(joinedload(Product.types)).all()
+#     return {
+#         "message":"showing all product",
+#         "data":products
+#     }
 
 
 # @router.get("/", response_model=MainProductOutResponse)
