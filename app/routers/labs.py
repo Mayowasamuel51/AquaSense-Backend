@@ -373,44 +373,58 @@ def get_my_lab_orders(
     current_user: User = Depends(get_current_user)
 ):
     user_id = current_user.id
-    # Fetch all labs for this user
-    labs = db.query(Labs).filter(Labs.user_id == user_id).order_by(Labs.id.desc()).all()
+
+    labs = (
+        db.query(Labs)
+        .filter(Labs.user_id == user_id)
+        .order_by(Labs.id.desc())
+        .all()
+    )
     if not labs:
         raise HTTPException(status_code=404, detail="No lab orders found for this user")
-    response = []
+
+    all_orders = []
+
     for lab in labs:
         # Fetch tests for this lab
         tests = db.query(LabTest).filter(LabTest.lab_id == lab.id).all()
-        test_list = [
-            {
-                "id": test.id,
-                "category": test.category_title,
+
+        # Group tests by category
+        grouped_tests = {}
+        for test in tests:
+            if test.category_title not in grouped_tests:
+                grouped_tests[test.category_title] = []
+            grouped_tests[test.category_title].append({
+                "id": test.test_id,
                 "name": test.test_name,
-                "price": test.test_price,
-            }
-            for test in tests
-        ]
-        response.append({
-            "lab_id": lab.id,
-            "preferred_date": lab.preferred_date,
+                "price": test.test_price
+            })
+
+        lab_data = {
+            "preferredDate": lab.preferred_date.strftime("%d/%m/%Y") if hasattr(lab.preferred_date, "strftime") else lab.preferred_date,
+            "labTests": [
+                {"title": title, "tests": items}
+                for title, items in grouped_tests.items()
+            ],
             "totalPrice": lab.totalPrice,
-            "payment_status": lab.payment_status,
-            "payment_method": lab.payment_method,
-            "transaction_reference": lab.transaction_reference,
-            "created_at": lab.created_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(lab, "created_at") else None,
-            "tests": test_list,
-        })
+            "payment": {
+                "status": lab.payment_status,
+                "method": lab.payment_method,
+                "reference": lab.transaction_reference
+            }
+        }
+        all_orders.append(lab_data)
 
     return {
         "success": True,
-        "data": {
+        "user": {
             "id": current_user.id,
             "first_name": current_user.first_name,
             "last_name": current_user.last_name,
             "email": current_user.email,
         },
-        "total_orders": len(response),
-        "orders": response,
+        "total_orders": len(all_orders),
+        "orders": all_orders,
     }
 
 
