@@ -235,7 +235,7 @@
 
 
 
-
+from fastapi.templating import Jinja2Templates
 import os
 import hmac
 import hashlib
@@ -246,13 +246,16 @@ from sqlalchemy.orm import Session
 from uuid import uuid4
 from typing import List, Optional
 from pydantic import BaseModel
+from starlette.responses import HTMLResponse
+
 from ..database import get_db
 from ..models import User, Labs, LabTest
 from ..dep.security import get_current_user
 from ..schemas import UserOut
-
 router = APIRouter(prefix="/labs", tags=["labs"])
 
+# templates folder (create this folder at project root or app directory)
+templates = Jinja2Templates(directory="templates")
 # Paystack environment setup
 PAYSTACK_SECRET_KEY = os.getenv(
     "PAYSTACK_SECRET_KEY", "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
@@ -271,7 +274,8 @@ def initialize_paystack(email: str, amount: float):
     }
     payload = {
         "email": email,
-        "amount": int(amount * 100),  # convert to kobo
+        "amount": int(amount * 100),
+        "callback_url":"https://aquasense-backend-jsa5.onrender.com/api/v1/labs/paystack/callback"
     }
 
     res = requests.post(url, json=payload, headers=headers)
@@ -462,6 +466,80 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         print("Webhook error:", e)
         return {"status": False, "message": str(e)}
+
+
+router.get("/paystack/callback", response_class=HTMLResponse)
+def paystack_callback(request: Request, reference: str, db: Session = Depends(get_db)):
+    """
+    Callback URL Paystack redirects to after payment:
+    GET /api/v1/labs/paystack/callback?reference=<reference>
+    This verifies the reference with Paystack and renders an HTML result page.
+    """
+    # Verify with Paystack
+    url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        data = res.json()
+    except Exception as e:
+        # Render an error template with the exception message
+        context = {
+            "request": request,
+            "status": "error",
+            "title": "Verification Error",
+            "message": f"Failed to contact Paystack: {str(e)}",
+            "reference": reference,
+            "lab": None,
+            "paystack": None,
+        }
+        return templates.TemplateResponse("payment_result.html", context)
+
+    # find lab order
+    lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
+
+    if not data.get("status"):
+        # Paystack returned an error: show message
+        context = {
+            "request": request,
+            "status": "error",
+            "title": "Payment Verification Failed",
+            "message": data.get("message", "Unknown error from Paystack"),
+            "reference": reference,
+            "lab": lab,
+            "paystack": data.get("data"),
+        }
+        return templates.TemplateResponse("payment_result.html", context)
+
+    tx = data.get("data", {})
+    tx_status = tx.get("status")
+
+    # Update DB if success
+    if lab and tx_status == "success":
+        lab.payment_status = "success"
+        db.commit()
+
+    # Prepare context data for the template
+    context = {
+        "request": request,
+        "status": "success" if tx_status == "success" else "pending",
+        "title": "Payment Result",
+        "message": "Payment completed successfully." if tx_status == "success" else f"Payment status: {tx_status}",
+        "reference": reference,
+        "lab": {
+            "id": lab.id,
+            "preferred_date": getattr(lab, "preferred_date", None),
+            "totalPrice": getattr(lab, "totalPrice", None),
+            "payment_status": getattr(lab, "payment_status", None),
+        } if lab else None,
+        "paystack": {
+            "amount": tx.get("amount"),
+            "gateway_response": tx.get("gateway_response"),
+            "channel": tx.get("channel"),
+            "currency": tx.get("currency"),
+        },
+    }
+
+    return templates.TemplateResponse("payment_result.html", context)
 # # @router.post("/")
 # # def create_lab_order(
 # #     lab: LabCreate,
