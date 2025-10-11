@@ -367,6 +367,53 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
     return JSONResponse(content=response_data)
 
 
+@router.get("/my-orders", summary="Get all lab orders for the logged-in user")
+def get_my_lab_orders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user_id = current_user.id
+    # Fetch all labs for this user
+    labs = db.query(Labs).filter(Labs.user_id == user_id).order_by(Labs.id.desc()).all()
+    if not labs:
+        raise HTTPException(status_code=404, detail="No lab orders found for this user")
+    response = []
+    for lab in labs:
+        # Fetch tests for this lab
+        tests = db.query(LabTest).filter(LabTest.lab_id == lab.id).all()
+        test_list = [
+            {
+                "id": test.id,
+                "category": test.category_title,
+                "name": test.test_name,
+                "price": test.test_price,
+            }
+            for test in tests
+        ]
+        response.append({
+            "lab_id": lab.id,
+            "preferred_date": lab.preferred_date,
+            "totalPrice": lab.totalPrice,
+            "payment_status": lab.payment_status,
+            "payment_method": lab.payment_method,
+            "transaction_reference": lab.transaction_reference,
+            "created_at": lab.created_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(lab, "created_at") else None,
+            "tests": test_list,
+        })
+
+    return {
+        "success": True,
+        "data": {
+            "id": current_user.id,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "email": current_user.email,
+        },
+        "total_orders": len(response),
+        "orders": response,
+    }
+
+
 @router.get("/all", summary="Admin: Get all lab orders with test details")
 def get_all_labs_with_tests(db: Session = Depends(get_db)):
     labs = db.query(Labs).order_by(Labs.id.desc()).all()

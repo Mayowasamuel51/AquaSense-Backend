@@ -121,7 +121,7 @@ class ProductResponse(BaseModel):
     price_to: Optional[float]
     discount_percent: Optional[float]
     discount_amount: Optional[float]
-    featured: Optional[bool] = False 
+    featured: Optional[bool] = False
     featured_expiry_date: Optional[datetime]
     vendor: VendorPublic                 # ✅ include vendor info
     types: List[ProductTypeResponse] = []
