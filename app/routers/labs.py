@@ -298,6 +298,21 @@ def paystack_callback(reference: str = None, trxref: str = None, db: Session = D
 
 
 
+@router.get("/all", summary="Admin: Get all lab orders")
+def get_all_labs(db: Session = Depends(get_db)):
+    labs = db.query(Labs).order_by(Labs.id.desc()).all()
+    return [
+        {
+            "id": lab.id,
+            "user_id": lab.user_id,
+            "username": lab.username,
+            "totalPrice": lab.totalPrice,
+            "payment_status": lab.payment_status,
+            "payment_method": lab.payment_method,
+            "transaction_reference": lab.transaction_reference,
+        }
+        for lab in labs
+    ]
 
 
 
