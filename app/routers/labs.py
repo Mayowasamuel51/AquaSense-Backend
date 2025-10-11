@@ -140,7 +140,6 @@ def verify_lab_payment(reference: str, db: Session = Depends(get_db)):
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
     res = requests.get(url, headers=headers)
     data = res.json()
-
     lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
     if not lab:
         raise HTTPException(status_code=404, detail="Lab order not found")
