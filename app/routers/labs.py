@@ -298,21 +298,37 @@ def paystack_callback(reference: str = None, trxref: str = None, db: Session = D
 
 
 
-@router.get("/all", summary="Admin: Get all lab orders")
-def get_all_labs(db: Session = Depends(get_db)):
+@router.get("/all", summary="Admin: Get all lab orders with test details")
+def get_all_labs_with_tests(db: Session = Depends(get_db)):
     labs = db.query(Labs).order_by(Labs.id.desc()).all()
-    return [
-        {
+
+    result = []
+    for lab in labs:
+        # fetch all test items for this lab
+        tests = db.query(LabTest).filter(LabTest.lab_id == lab.id).all()
+        test_list = [
+            {
+                "category_title": test.category_title,
+                "test_id": test.test_id,
+                "test_name": test.test_name,
+                "test_price": test.test_price,
+            }
+            for test in tests
+        ]
+
+        result.append({
             "id": lab.id,
             "user_id": lab.user_id,
             "username": lab.username,
+            "preferred_date": getattr(lab, "preferred_date", None),
             "totalPrice": lab.totalPrice,
             "payment_status": lab.payment_status,
             "payment_method": lab.payment_method,
             "transaction_reference": lab.transaction_reference,
-        }
-        for lab in labs
-    ]
+            "tests": test_list,  # 🧪 include all tests here
+        })
+
+    return {"count": len(result), "labs": result}
 
 
 
