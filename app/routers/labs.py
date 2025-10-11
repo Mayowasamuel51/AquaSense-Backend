@@ -229,72 +229,146 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
         print("Webhook error:", e)
         return {"status": False, "message": str(e)}
 
+#
+# @router.get("/paystack/callback", response_class=HTMLResponse)
+# def paystack_callback(reference: str = None, trxref: str = None, db: Session = Depends(get_db)):
+#     """
+#     Handles Paystack redirect after payment completion
+#     """
+#     try:
+#         # ✅ Paystack sometimes sends either 'reference' or 'trxref'
+#         ref = reference or trxref
+#         if not ref:
+#             return HTMLResponse("<h2>❌ Missing reference in callback URL</h2>")
+#
+#         # 🔍 Verify transaction
+#         url = f"{PAYSTACK_BASE_URL}/transaction/verify/{ref}"
+#         headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+#         res = requests.get(url, headers=headers)
+#         data = res.json()
+#
+#         print("🔍 Paystack callback verify response:", data)
+#
+#         if not data.get("status"):
+#             return HTMLResponse("<h2>❌ Payment verification failed</h2>")
+#
+#         payment_data = data["data"]
+#         status = payment_data["status"]
+#         amount = payment_data["amount"] / 100
+#         email = payment_data["customer"]["email"]
+#
+#         # ✅ Update lab record
+#         lab = db.query(Labs).filter(Labs.transaction_reference == ref).first()
+#         if lab:
+#             lab.payment_status = "success" if status == "success" else "failed"
+#             db.commit()
+#
+#         # ✅ Return user-facing HTML
+#         if status == "success":
+#             html = f"""
+#             <html>
+#                 <head><title>Payment Success</title></head>
+#                 <body style='font-family: sans-serif; text-align:center;'>
+#                     <h2 style='color:green;'>✅ Payment Successful!</h2>
+#                     <p>Reference: <b>{ref}</b></p>
+#                     <p>Amount: ₦{amount:,.2f}</p>
+#                     <p>Email: {email}</p>
+#                 </body>
+#             </html>
+#             """
+#         else:
+#             html = f"""
+#             <html>
+#                 <head><title>Payment Failed</title></head>
+#                 <body style='font-family: sans-serif; text-align:center;'>
+#                     <h2 style='color:red;'>❌ Payment Failed!</h2>
+#                     <p>Reference: <b>{ref}</b></p>
+#                     <p>Status: {status}</p>
+#                 </body>
+#             </html>
+#             """
+#
+#         return HTMLResponse(html)
+#
+#     except Exception as e:
+#         print("🔥 Callback error:", str(e))
+#         return HTMLResponse(f"<h2>❌ Server Error:</h2><p>{str(e)}</p>")
+#
+#
 
-@router.get("/paystack/callback", response_class=HTMLResponse)
-def paystack_callback(reference: str = None, trxref: str = None, db: Session = Depends(get_db)):
-    """
-    Handles Paystack redirect after payment completion
-    """
-    try:
-        # ✅ Paystack sometimes sends either 'reference' or 'trxref'
-        ref = reference or trxref
-        if not ref:
-            return HTMLResponse("<h2>❌ Missing reference in callback URL</h2>")
-
-        # 🔍 Verify transaction
-        url = f"{PAYSTACK_BASE_URL}/transaction/verify/{ref}"
-        headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-        res = requests.get(url, headers=headers)
-        data = res.json()
-
-        print("🔍 Paystack callback verify response:", data)
-
-        if not data.get("status"):
-            return HTMLResponse("<h2>❌ Payment verification failed</h2>")
-
-        payment_data = data["data"]
-        status = payment_data["status"]
-        amount = payment_data["amount"] / 100
-        email = payment_data["customer"]["email"]
-
-        # ✅ Update lab record
-        lab = db.query(Labs).filter(Labs.transaction_reference == ref).first()
-        if lab:
-            lab.payment_status = "success" if status == "success" else "failed"
-            db.commit()
-
-        # ✅ Return user-facing HTML
-        if status == "success":
-            html = f"""
-            <html>
-                <head><title>Payment Success</title></head>
-                <body style='font-family: sans-serif; text-align:center;'>
-                    <h2 style='color:green;'>✅ Payment Successful!</h2>
-                    <p>Reference: <b>{ref}</b></p>
-                    <p>Amount: ₦{amount:,.2f}</p>
-                    <p>Email: {email}</p>
-                </body>
-            </html>
-            """
-        else:
-            html = f"""
-            <html>
-                <head><title>Payment Failed</title></head>
-                <body style='font-family: sans-serif; text-align:center;'>
-                    <h2 style='color:red;'>❌ Payment Failed!</h2>
-                    <p>Reference: <b>{ref}</b></p>
-                    <p>Status: {status}</p>
-                </body>
-            </html>
-            """
-
-        return HTMLResponse(html)
-
-    except Exception as e:
-        print("🔥 Callback error:", str(e))
-        return HTMLResponse(f"<h2>❌ Server Error:</h2><p>{str(e)}</p>")
+from fastapi.responses import HTMLResponse, JSONResponse
 
 
+@router.get("/paystack/callback")
+def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
+    """Callback URL that Paystack redirects to after payment"""
+    verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+    res = requests.get(verify_url, headers=headers)
+    data = res.json()
+
+    lab = db.query(Labs).filter(Labs.transaction_reference == reference).first()
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab order not found")
+
+    status = data.get("data", {}).get("status", "failed")
+    amount_paid = data.get("data", {}).get("amount", 0) / 100
+    channel = data.get("data", {}).get("channel", "unknown")
+    gateway_response = data.get("data", {}).get("gateway_response", "")
+    currency = data.get("data", {}).get("currency", "NGN")
+
+    # ✅ Update payment status
+    if status == "success":
+        lab.payment_status = "success"
+    elif status == "failed":
+        lab.payment_status = "failed"
+    else:
+        lab.payment_status = "pending"
+    db.commit()
+
+    # ✅ Prepare response data
+    response_data = {
+        "success": True,
+        "message": "Payment verification completed",
+        "payment_status": status,
+        "lab_order": {
+            "id": lab.id,
+            "totalPrice": lab.totalPrice,
+            "payment_status": lab.payment_status,
+            "payment_method": lab.payment_method,
+            "transaction_reference": lab.transaction_reference,
+        },
+        "paystack": {
+            "amount_paid": amount_paid,
+            "channel": channel,
+            "currency": currency,
+            "gateway_response": gateway_response,
+        }
+    }
+
+    # ✅ Detect client type (browser or API)
+    accept_header = request.headers.get("accept", "")
+
+    if "text/html" in accept_header:
+        # Return HTML view if opened in a browser
+        html = f"""
+        <html>
+          <head><title>Payment {status.title()}</title></head>
+          <body style="text-align:center; font-family: Arial; margin-top:50px;">
+            <h2>Payment Status: <span style="color:{'green' if status == 'success' else 'red'}">{status.upper()}</span></h2>
+            <p>Reference: <b>{reference}</b></p>
+            <p>Amount: ₦{amount_paid:,.2f}</p>
+            <p>Payment Method: {channel}</p>
+            <p>Gateway Response: {gateway_response}</p>
+            <br>
+            <p>Thank you for your order!</p>
+          </body>
+        </html>
+        """
+        return HTMLResponse(content=html)
+
+    # Otherwise return JSON (for mobile clients or frontend API)
+    return JSONResponse(content=response_data)
 
 
 @router.get("/all", summary="Admin: Get all lab orders with test details")
