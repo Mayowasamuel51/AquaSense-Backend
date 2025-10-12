@@ -135,4 +135,30 @@ def get_my_vet_supports(
     if not supports:
         raise HTTPException(status_code=404, detail="No vet support records found.")
 
-    return {"message":"Displaying my past Vetsupport" ,   "data":supports}
+    return {"message":"Displaying my Vet support" ,   "data":supports}
+
+
+
+
+@router.get("/all", response_model=MainOutVetSupport)
+def get_all_vet_supports(db: Session = Depends(get_db)):
+    """
+    🟢 Public route: Get all vet support requests
+    Includes related images, videos, and user info.
+    """
+
+    supports = (
+        db.query(VetSupport)
+        .options(
+            joinedload(VetSupport.images),
+            joinedload(VetSupport.videos),
+            joinedload(VetSupport.user),
+        )
+        .order_by(VetSupport.id.desc())
+        .all()
+    )
+
+    if not supports:
+        raise HTTPException(status_code=404, detail="No vet support data found.")
+
+    return {"message":"showing all vet support on the database", "data":supports}

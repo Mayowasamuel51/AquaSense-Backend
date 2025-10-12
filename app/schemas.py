@@ -613,6 +613,18 @@ class VetSupportCreate(BaseModel):
             raise ValueError("issue  field cannot be empty")
         return v
 
+
+class VetUserInfo(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    profilepicture: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class VetSupportResponse(BaseModel):
     id: int
     helpwith: Optional[str] = None
@@ -620,6 +632,7 @@ class VetSupportResponse(BaseModel):
     issue:Optional[str] = None
     images: List[VetImageResponse] = []
     videos: List[VetVideoResponse] = []
+    user: Optional[VetUserInfo] = None
 
     class Config:
         from_attributes = True
