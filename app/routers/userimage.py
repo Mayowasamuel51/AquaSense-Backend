@@ -66,7 +66,7 @@ async def upload_or_change_profile_picture(
         return {
             "message": "Profile picture uploaded successfully",
             "url": db_user.profilepicture,
-            "data":db_user
+            "data":UserOut.from_orm(db_user)
         }
 
     except Exception as e:
