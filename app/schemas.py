@@ -615,8 +615,9 @@ class VetSupportCreate(BaseModel):
 
 class VetSupportResponse(BaseModel):
     id: int
-    helpwith: str
-    date: str
+    helpwith: Optional[str] = None
+    date: Optional[str] = None
+    issue:Optional[str] = None
     images: List[VetImageResponse] = []
     videos: List[VetVideoResponse] = []
 
