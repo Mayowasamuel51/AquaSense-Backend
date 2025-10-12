@@ -62,6 +62,10 @@ async def upload_or_change_profile_picture(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
+
+
+#
+#
 # async def upload_profile_picture(
 #     file: UploadFile = File(...),
 #     db: Session = Depends(get_db),
@@ -87,8 +91,8 @@ async def upload_or_change_profile_picture(
 #
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
-
-
+#
+#
 # ✅ Change (replace) profile picture
 # @router.put("/change")
 # async def change_profile_picture(
