@@ -69,7 +69,7 @@ async def change_profile_picture(
     user: User = Depends(get_current_user)
 ):
 
-    api_key = os.getenv("IMGBB_API_KEY")
+    api_key = os.getenv("b250634f93da9f6857fcf390924230c4")
     if not api_key:
         raise HTTPException(status_code=500, detail="IMGBB API key not configured")
     db_user = db.query(User).filter(User.id == user.id).first()
