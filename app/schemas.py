@@ -598,6 +598,7 @@ class VetSupportCreate(BaseModel):
     helpwith: constr(min_length=5, max_length=250) = Field(..., description="Description of the issue or help needed")
     # images: constr(min_length=5, max_length=250) = Field(..., description="you cant upload more than 3 images")
     issue: constr(min_length=5, max_length=250) = Field(..., description="Description of the issue or help needed")
+    modeofsupport : constr(min_length=5, max_length=250) = Field(..., description="Description of the mode of support  or help needed")
     date: constr(min_length=3, max_length=50) = Field(..., description="Date string, e.g. 2025-10-12")
     # coins: constr(regex=r"^\d+$") = Field(..., description="Number of coins to use (digits only)")
 
@@ -629,6 +630,7 @@ class VetSupportResponse(BaseModel):
     id: int
     helpwith: Optional[str] = None
     date: Optional[str] = None
+    modeofsupport: Optional[str] =None
     issue:Optional[str] = None
     images: List[VetImageResponse] = []
     videos: List[VetVideoResponse] = []

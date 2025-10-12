@@ -39,6 +39,7 @@ async def create_vet_support(
     helpwith: str = Form(...),
     date: str = Form(...),
     issue :str = Form(...),
+    modeofsupport: str = Form(...),
     files: Optional[List[UploadFile]] = File(None),  # all in one field
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -48,7 +49,7 @@ async def create_vet_support(
     #     validated = VetSupportCreate(helpwith=helpwith, date=date)
     # except Exception as e:
     #     raise HTTPException(status_code=422, detail=str(e))
-    if not helpwith or not date or not issue :
+    if not helpwith or not date or not issue  or not modeofsupport:
         raise HTTPException(status_code=400, detail="one of the feilds  are required.")
 
     # No files uploaded
@@ -86,6 +87,7 @@ async def create_vet_support(
         issue= issue,
         helpwith=helpwith,
         date=date,
+        modeofsupport= modeofsupport,
         user_id=current_user.id,
     )
 

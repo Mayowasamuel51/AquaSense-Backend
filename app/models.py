@@ -600,6 +600,7 @@ class VetSupport(Base):
     __tablename__ = "vetsupport"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     helpwith = Column(String(250), nullable=False)
+    modeofsupport = Column(String(250), nullable=False)
     issue = Column(String(550), nullable=False)
     image= Column(String(500), nullable=True)
     video = Column(String(500), nullable=True)
