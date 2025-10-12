@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
+import cloudinary
 from dotenv import load_dotenv
 import cloudinary.uploader
 from ..models import User
@@ -28,20 +29,22 @@ async def upload_or_change_profile_picture(
     Upload a new profile picture, or replace an existing one if it already exists.
     Automatically deletes the old Cloudinary image.
     """
+    # 🔍 Always get a fresh DB instance of the user
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
+
     try:
         # ✅ Delete old image if it exists
-        if user.profilepicture:
+        if db_user.profilepicture:
             try:
-                # Extract the public_id (file name without extension)
-                public_id = user.profilepicture.split("/")[-1].split(".")[0]
+                # Extract the public_id (the filename part from Cloudinary URL)
+                public_id = db_user.profilepicture.split("/")[-1].split(".")[0]
                 cloudinary.uploader.destroy(f"profile_pictures/{public_id}")
             except Exception as delete_err:
-                print("Warning: could not delete old image:", delete_err)
+                print("⚠️ Warning: could not delete old image:", delete_err)
 
-        # ✅ Upload new image
+        # ✅ Upload the new image
         result = cloudinary.uploader.upload(
             file.file,
             folder="profile_pictures",
@@ -50,14 +53,14 @@ async def upload_or_change_profile_picture(
             resource_type="image"
         )
 
-        # ✅ Update user in database
-        user.profilepicture = result.get("secure_url")
+        # ✅ Save the new image URL in the database
+        db_user.profilepicture = result.get("secure_url")
         db.commit()
-        db.refresh(user)
+        db.refresh(db_user)
 
         return {
             "message": "Profile picture uploaded successfully",
-            "url": user.profilepicture
+            "url": db_user.profilepicture
         }
 
     except Exception as e:
