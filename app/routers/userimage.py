@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 import cloudinary
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import cloudinary.uploader
 from ..models import User
 from ..database import get_db
 from ..dep.security import get_current_user  # ✅ authenticated user dependency
 
 router = APIRouter(prefix="/profileimage", tags=["Profile Picture"])
-load_dotenv()
+# load_dotenv()
 
 # ✅ Configure Cloudinary
 cloudinary.config(
