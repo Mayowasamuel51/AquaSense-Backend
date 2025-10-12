@@ -611,6 +611,14 @@ class VetSupport(Base):
     # ✅ Relationship back to User
     user = relationship("User", back_populates="vetsupports")
     images = relationship("VetImage", back_populates="vetsupport", cascade="all, delete-orphan")
+    videos = relationship("VetVideo", back_populates="vetsupport", cascade="all, delete-orphan")
+
+class VetVideo(Base):
+    __tablename__ = "vetvideos"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    url = Column(String(500), nullable=False)
+    vetsupport_id = Column(Integer, ForeignKey("vetsupport.id", ondelete="CASCADE"))
+    vetsupport = relationship("VetSupport", back_populates="videos")
 
 class VetImage(Base):
     __tablename__ = "vetimages"

@@ -11,7 +11,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from starlette.responses import HTMLResponse
 from ..database import get_db
-from ..models import User, Labs, LabTest, VetSupport, VetImage
+from ..models import User, Labs, LabTest, VetSupport, VetImage, VetVideo
 from ..dep.security import get_current_user
 from ..schemas import UserOut, VetSupportCreate, VetSupportResponse
 import cloudinary
@@ -38,56 +38,52 @@ MAX_VIDEO_SIZE_MB = 5
 async def create_vet_support(
     helpwith: str = Form(...),
     date: str = Form(...),
-    issue: str = Form(...),
-    images: Optional[List[UploadFile]] = File(None),
-    video: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),  # all in one field
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # ✅ Validate text inputs
-    try:
-        validated = VetSupportCreate(helpwith=helpwith, date=date, issue=issue)
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+    # Validate inputs
+    # try:
+    #     validated = VetSupportCreate(helpwith=helpwith, date=date)
+    # except Exception as e:
+    #     raise HTTPException(status_code=422, detail=str(e))
+    if not helpwith or not date:
+        raise HTTPException(status_code=400, detail="helpwith and date are required.")
 
-    # ✅ Validate image count
-    if images and len(images) > 3:
-        raise HTTPException(status_code=400, detail="You can upload up to 3 images only.")
+    # No files uploaded
+    if not files or len(files) == 0:
+        raise HTTPException(status_code=400, detail="You must upload at least one image or video.")
 
-    image_urls = []
+    if len(files) > 3:
+        raise HTTPException(status_code=400, detail="You can upload a maximum of 3 files total.")
 
-    # ✅ Upload images to Cloudinary
-    if images:
-        for img in images:
-            if not img.content_type.startswith("image/"):
-                raise HTTPException(status_code=400, detail=f"{img.filename} is not a valid image.")
-            upload = cloudinary.uploader.upload(img.file, folder="vetsupport/images")
-            image_urls.append(upload["secure_url"])
+    # Separate into images and videos
+    image_files = []
+    video_files = []
 
-    # ✅ Validate and upload video
-    video_url = None
-    if video:
-        if not video.content_type.startswith("video/"):
-            raise HTTPException(status_code=400, detail="Only video files are allowed.")
+    for f in files:
+        if f.content_type.startswith("image/"):
+            image_files.append(f)
+        elif f.content_type.startswith("video/"):
+            video_files.append(f)
+        else:
+            raise HTTPException(status_code=400, detail=f"{f.filename} is not a valid image or video.")
 
+    # Validate video file sizes
+    for video in video_files:
         video.file.seek(0, 2)
-        file_size_mb = video.file.tell() / (1024 * 1024)
+        size_mb = video.file.tell() / (1024 * 1024)
         video.file.seek(0)
+        if size_mb > MAX_VIDEO_SIZE_MB:
+            raise HTTPException(status_code=400, detail=f"{video.filename} exceeds 5MB limit.")
 
-        if file_size_mb > MAX_VIDEO_SIZE_MB:
-            raise HTTPException(status_code=400, detail="Video must be 5 MB or smaller.")
-
-        upload = cloudinary.uploader.upload_large(
-            video.file, folder="vetsupport/videos", resource_type="video"
-        )
-        video_url = upload["secure_url"]
-
-    # ✅ Create VetSupport entry
+    # Create VetSupport record
     vet_support = VetSupport(
-        helpwith=validated.helpwith,
-        date=validated.date,
-        issue=validated.issue,
-        video=video_url,
+        # helpwith=validated.helpwith,
+        # date=validated.date,
+        # user_id=current_user.id,
+        helpwith=helpwith,
+        date=date,
         user_id=current_user.id,
     )
 
@@ -95,11 +91,18 @@ async def create_vet_support(
     db.commit()
     db.refresh(vet_support)
 
-    # ✅ Add image records
-    for url in image_urls:
-        vet_image = VetImage(url=url, vetsupport_id=vet_support.id)
-        db.add(vet_image)
-    db.commit()
+    # Upload to Cloudinary
+    for img in image_files:
+        upload = cloudinary.uploader.upload(img.file, folder="vetsupport/images")
+        db.add(VetImage(url=upload["secure_url"], vetsupport_id=vet_support.id))
 
+    for vid in video_files:
+        upload = cloudinary.uploader.upload_large(
+            vid.file, folder="vetsupport/videos", resource_type="video"
+        )
+        db.add(VetVideo(url=upload["secure_url"], vetsupport_id=vet_support.id))
+
+    db.commit()
     db.refresh(vet_support)
+
     return vet_support

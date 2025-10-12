@@ -587,6 +587,12 @@ class VetImageResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class VetVideoResponse(BaseModel):
+    id: int
+    url: str
+
+    class Config:
+        from_attributes = True
 
 class VetSupportCreate(BaseModel):
     helpwith: constr(min_length=5, max_length=250) = Field(..., description="Description of the issue or help needed")
@@ -611,8 +617,8 @@ class VetSupportResponse(BaseModel):
     id: int
     helpwith: str
     date: str
-    video: Optional[str] = None
     images: List[VetImageResponse] = []
+    videos: List[VetVideoResponse] = []
 
     class Config:
         from_attributes = True
