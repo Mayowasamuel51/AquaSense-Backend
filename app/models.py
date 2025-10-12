@@ -124,6 +124,9 @@ class User(Base):
     # 🧩 Add this line:
     labs = relationship("Labs", back_populates="user",  cascade="all, delete-orphan")
 
+    # ✅ Add relationship to VetSupport
+    vetsupports = relationship("VetSupport", back_populates="user", cascade="all, delete-orphan")
+
 class Vendor(Base):
     __tablename__ = "vendor"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -147,7 +150,6 @@ class Vendor(Base):
     # relationship to tokens
     tokens = relationship("VerificationToken", back_populates="vendor")
     products = relationship("Product", back_populates="vendor", cascade="all, delete-orphan")
-
 
 class Product(Base):
     __tablename__ = "products"
@@ -595,14 +597,31 @@ class SupportAgent(Base):
     user = relationship("User", back_populates="support_tickets")  # optional, for easy access
 
 class VetSupport(Base):
-    __tablename__ = "vesupport"
+    __tablename__ = "vetsupport"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     helpwith = Column(String(250), nullable=False)
+    issue = Column(String(550), nullable=False)
     image= Column(String(500), nullable=True)
     video = Column(String(500), nullable=True)
     date = Column(String(250), nullable=False)
-    username = Column(String(250), nullable=False)
-    coins = Column(String(240), nullable=False)
+    username = Column(String(250), nullable=True)
+    coins = Column(String(240), nullable=True)
+    # ✅ Create foreign key to users table
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # ✅ Relationship back to User
+    user = relationship("User", back_populates="vetsupports")
+    images = relationship("VetImage", back_populates="vetsupport", cascade="all, delete-orphan")
+
+class VetImage(Base):
+    __tablename__ = "vetimages"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    url = Column(String(500), nullable=False)
+    vetsupport_id = Column(Integer, ForeignKey("vetsupport.id", ondelete="CASCADE"))
+
+    # ✅ Relationship back to VetSupport
+    vetsupport = relationship("VetSupport", back_populates="images")
+
 
 class SupportTicket(Base):
     __tablename__ = "support_tickets"

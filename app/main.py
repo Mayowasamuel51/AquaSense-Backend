@@ -12,7 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from .routers import(contact, health, auth, myfarm, profileupdate, learning , questions, vendor,
                      # categories,
-                     batch, units, vendor_product,
+                     batch, units, vendor_product, vetsupport,
                      # products,
                      dailyrecords, feeds, waitlist, income, stocking, labs, agent, checkout,test , userimage)
 # expenses , profileupdate, myfarm, ponds)   # 👈 import your auth router
@@ -198,4 +198,5 @@ app.include_router(test.router,prefix="/api/v1" )
 app.include_router(vendor_product.router, prefix="/api/v1")
 app.include_router(vendor.router,prefix="/api/v1" )
 app.include_router(userimage.router,prefix="/api/v1" )
+app.include_router(vetsupport.router,prefix="/api/v1" )
 # app.run_server(debug=True, port=8050, host='0.0.0.0')

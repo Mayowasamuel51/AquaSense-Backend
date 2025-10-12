@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, HttpUrl
+from pydantic import BaseModel, EmailStr, ConfigDict, HttpUrl ,  Field, constr, validator
 from typing import Optional ,List
 
 
@@ -577,6 +577,45 @@ class VendorResponse(BaseModel):
 
     class Config:
         from_attributes = True   # allows returning SQLAlchemy models directly
+
+
+
+class VetImageResponse(BaseModel):
+    id: int
+    url: str
+
+    class Config:
+        from_attributes = True
+
+
+class VetSupportCreate(BaseModel):
+    helpwith: constr(min_length=5, max_length=250) = Field(..., description="Description of the issue or help needed")
+    # images: constr(min_length=5, max_length=250) = Field(..., description="you cant upload more than 3 images")
+    issue: constr(min_length=5, max_length=250) = Field(..., description="Description of the issue or help needed")
+    date: constr(min_length=3, max_length=50) = Field(..., description="Date string, e.g. 2025-10-12")
+    # coins: constr(regex=r"^\d+$") = Field(..., description="Number of coins to use (digits only)")
+
+    @validator("helpwith")
+    def validate_helpwith(cls, v):
+        if not v.strip():
+            raise ValueError("helpwith field cannot be empty")
+        return v
+
+    @validator("issue")
+    def validate_helpwith(cls, v):
+        if not v.strip():
+            raise ValueError("issue  field cannot be empty")
+        return v
+
+class VetSupportResponse(BaseModel):
+    id: int
+    helpwith: str
+    date: str
+    video: Optional[str] = None
+    images: List[VetImageResponse] = []
+
+    class Config:
+        from_attributes = True
 # class CartItem(BaseModel):
 #     product_id: str
 #     quantity: int
