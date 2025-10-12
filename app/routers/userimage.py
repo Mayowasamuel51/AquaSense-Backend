@@ -1,22 +1,23 @@
-import os
-import base64
-import httpx
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db
-from ..models import User
-from ..dep.security import get_current_user  # ✅ your JWT auth dependency
 from dotenv import load_dotenv
-# ✅ Load environment variables
-load_dotenv()
-router = APIRouter(
-    prefix="/profileimage",
-    tags=["Profile Picture"]
-)
+import cloudinary.uploader
+from ..models import User
+from ..database import get_db
+from ..dep.security import get_current_user  # ✅ authenticated user dependency
 
-# ===========================
-# 🖼️ Upload Profile Picture
-# ===========================
+router = APIRouter(prefix="/profileimage", tags=["Profile Picture"])
+load_dotenv()
+
+# ✅ Configure Cloudinary
+cloudinary.config(
+    cloud_name="dicz9c7kk",
+    api_key="948636269897915",
+    api_secret="f87ZL-_tSg7eV__mVGrmOKtl-Rw",
+    secure=True
+)
+# ✅ Upload a new profile picture
+
 @router.post("/upload")
 async def upload_profile_picture(
     file: UploadFile = File(...),
@@ -26,83 +27,55 @@ async def upload_profile_picture(
     db_user = db.query(User).filter(User.id == user.id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    api_key = "b250634f93da9f6857fcf390924230c4"
-    if not api_key:
-        raise HTTPException(status_code=500, detail="IMGBB API key not configured")
     try:
-        contents = await file.read()
-        encoded = base64.b64encode(contents).decode('utf-8')
+        result = cloudinary.uploader.upload(
+            file.file,
+            folder="profile_pictures",
+            public_id=f"user_{user.id}",
+            overwrite=True,
+            resource_type="image"
+        )
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.imgbb.com/1/upload",
-                data={"key": api_key, "image": encoded}
-            )
-
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="ImgBB upload failed")
-
-        data = response.json()
-        url = data.get("data", {}).get("url")
-
-        if not url:
-            raise HTTPException(status_code=500, detail="Failed to retrieve image URL")
-
-        # Save URL in the user’s record
-        user.profilepicture = url
+        user.profilepicture = result.get("secure_url")
         db.commit()
         db.refresh(user)
 
-        return {"message": "Profile picture uploaded successfully", "url": url}
+        return {"message": "Profile picture uploaded successfully", "url": user.profilepicture}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
 
 
-# ===========================
-# ♻️ Change / Replace Picture
-# ===========================
+# ✅ Change (replace) profile picture
 @router.put("/change")
 async def change_profile_picture(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-
-    api_key = os.getenv("b250634f93da9f6857fcf390924230c4")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="IMGBB API key not configured")
-    db_user = db.query(User).filter(User.id == user.id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     try:
-        contents = await file.read()
-        encoded = base64.b64encode(contents).decode('utf-8')
+        # Optional: remove the old image
+        if user.profilepicture:
+            try:
+                # Extract public_id (remove extension and folder)
+                public_id = user.profilepicture.split("/")[-1].split(".")[0]
+                cloudinary.uploader.destroy(f"profile_pictures/{public_id}")
+            except Exception:
+                pass
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.imgbb.com/1/upload",
-                data={"key": api_key, "image": encoded}
-            )
+        result = cloudinary.uploader.upload(
+            file.file,
+            folder="profile_pictures",
+            public_id=f"user_{user.id}",
+            overwrite=True,
+            resource_type="image"
+        )
 
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="ImgBB upload failed")
-
-        data = response.json()
-        url = data.get("data", {}).get("url")
-
-        if not url:
-            raise HTTPException(status_code=500, detail="Failed to retrieve image URL")
-
-        # Optionally: Delete old image (ImgBB free plan doesn’t really allow it)
-        # So we’ll just overwrite the URL in the DB
-
-        user.profilepicture = url
+        user.profilepicture = result.get("secure_url")
         db.commit()
         db.refresh(user)
 
-        return {"message": "Profile picture changed successfully", "url": url}
+        return {"message": "Profile picture changed successfully", "url": user.profilepicture}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Cloudinary change failed: {str(e)}")
