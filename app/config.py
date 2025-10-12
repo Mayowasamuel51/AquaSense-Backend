@@ -1,10 +1,7 @@
 import os
-from dotenv import load_dotenv
-import cloudinary
 from pydantic import BaseModel
 
-# ✅ Load environment variables
-load_dotenv()
+
 
 # IMGBB_API_KEY="b250634f93da9f6857fcf390924230c4"
 
@@ -35,12 +32,7 @@ settings = Settings()
 # ==========================
 # ☁️ Cloudinary Configuration
 # ==========================
-cloudinary.config(
-    cloud_name=os.getenv("mypromosphere"),
-    api_key=os.getenv("948636269897915"),
-    api_secret=os.getenv("f87ZL-_tSg7eV__mVGrmOKtl-Rw"),
-    secure=True
-)
+
 
 
 
