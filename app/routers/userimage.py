@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import cloudinary
 # from dotenv import load_dotenv
@@ -6,6 +7,7 @@ import cloudinary.uploader
 from ..models import User
 from ..database import get_db
 from ..dep.security import get_current_user  # ✅ authenticated user dependency
+from ..schemas import UserOut
 
 router = APIRouter(prefix="/profileimage", tags=["Profile Picture"])
 # load_dotenv()
@@ -18,6 +20,9 @@ cloudinary.config(
     secure=True
 )
 # ✅ Upload a new profile picture
+class MainOutMain(BaseModel):
+    data:UserOut
+
 
 @router.post("/upload")
 async def upload_or_change_profile_picture(
@@ -60,7 +65,8 @@ async def upload_or_change_profile_picture(
 
         return {
             "message": "Profile picture uploaded successfully",
-            "url": db_user.profilepicture
+            "url": db_user.profilepicture,
+            "data":db_user
         }
 
     except Exception as e:

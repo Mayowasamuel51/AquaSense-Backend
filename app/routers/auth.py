@@ -29,7 +29,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 print(11123)
 
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
+SMTP_PORT = 465
 EMAIL_ADDRESS = "aquasenseapp@gmail.com"       # change to your email
 EMAIL_PASSWORD  = "xnnz pxum rxoq cnaz"          # use app password (not raw Gmail pass)
 
