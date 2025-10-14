@@ -190,31 +190,37 @@ def verify_payment(reference: str, db: Session = Depends(get_db)):
 
 
 
-
-
 @router.get("/paystack/callback")
 def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
-    """Callback URL that Paystack redirects to after payment"""
+    """
+    ✅ Callback URL that Paystack redirects to after payment.
+    This verifies the transaction and updates the order status.
+    """
     verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
     res = requests.get(verify_url, headers=headers)
     data = res.json()
-    lab = db.query(Order).filter(Order.payment_reference == reference).first()
-    if not lab:
-        raise HTTPException(status_code=404, detail="Lab order not found")
+
+    # Find matching order
+    order = db.query(Order).filter(Order.payment_reference == reference).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Extract key Paystack data
     status = data.get("data", {}).get("status", "failed")
     amount_paid = data.get("data", {}).get("amount", 0) / 100
     channel = data.get("data", {}).get("channel", "unknown")
     gateway_response = data.get("data", {}).get("gateway_response", "")
     currency = data.get("data", {}).get("currency", "NGN")
 
-    # ✅ Update payment status
+    # ✅ Update payment status in your Order table
     if status == "success":
-        lab.payment_status = "success"
+        order.status = "paid"
     elif status == "failed":
-        lab.payment_status = "failed"
+        order.status = "failed"
     else:
-        lab.payment_status = "pending"
+        order.status = "pending"
+
     db.commit()
 
     # ✅ Prepare response data
@@ -222,12 +228,11 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
         "success": True,
         "message": "Payment verification completed",
         "payment_status": status,
-        "lab_order": {
-            "id": lab.id,
-            "totalPrice": lab.totalPrice,
-            "payment_status": lab.payment_status,
-            "payment_method": lab.payment_method,
-            "transaction_reference": lab.transaction_reference,
+        "order": {
+            "id": order.id,
+            "total_amount": order.total_amount,
+            "status": order.status,
+            "payment_reference": order.payment_reference,
         },
         "paystack": {
             "amount_paid": amount_paid,
@@ -237,30 +242,33 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
         }
     }
 
-    # ✅ Detect client type (browser or API)
+    # ✅ Detect client type (browser vs API client)
     accept_header = request.headers.get("accept", "")
 
     if "text/html" in accept_header:
-        # Return HTML view if opened in a browser
+        # Return HTML page (for browser redirect)
         html = f"""
         <html>
           <head><title>Payment {status.title()}</title></head>
           <body style="text-align:center; font-family: Arial; margin-top:50px;">
-            <h2>Payment Status: <span style="color:{'green' if status == 'success' else 'red'}">{status.upper()}</span></h2>
+            <h2>Payment Status: 
+                <span style="color:{'green' if status == 'success' else 'red'}">
+                    {status.upper()}
+                </span>
+            </h2>
             <p>Reference: <b>{reference}</b></p>
-            <p>Amount: ₦{amount_paid:,.2f}</p>
+            <p>Amount Paid: ₦{amount_paid:,.2f}</p>
             <p>Payment Method: {channel}</p>
             <p>Gateway Response: {gateway_response}</p>
             <br>
-            <p>Thank you for your order!</p>
+            <p>Thank you for shopping with us!</p>
           </body>
         </html>
         """
         return HTMLResponse(content=html)
 
-    # Otherwise return JSON (for mobile clients or frontend API)
+    # Return JSON for API clients
     return JSONResponse(content=response_data)
-
 @router.post("/webhook")
 async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
     """
