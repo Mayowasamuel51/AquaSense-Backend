@@ -192,10 +192,11 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     total_amount = Column(Float, nullable=False)
     status = Column(String(50), default="pending")
-    payment_reference = Column(String(255), unique=True, nullable=True)
+    payment_reference = Column(String(255), unique=True, index=True, nullable=True)
+    # payment_reference = Column(String(255), unique=True, nullable=True)
     payment_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-
+    #
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete")
 

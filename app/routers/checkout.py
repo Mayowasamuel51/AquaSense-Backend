@@ -1,10 +1,14 @@
-
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException , Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 import requests
 import os
+import hmac
+import hashlib
+# import requests
+
+from starlette.responses import JSONResponse
 
 from ..database import get_db
 from ..models import Order, OrderItem, Product, Vendor, User
@@ -18,7 +22,8 @@ router = APIRouter(prefix="/checkout", tags=["Orders & Payments"])
 # ✅ PAYSTACK CONFIG
 # ==============================
 PAYSTACK_SECRET_KEY = os.getenv(
-    "PAYSTACK_SECRET_KEY", "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
+    "PAYSTACK_SECRET_KEY",
+    "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
 )
 PAYSTACK_BASE_URL = os.getenv("PAYSTACK_BASE_URL", "https://api.paystack.co")
 
@@ -48,34 +53,20 @@ class CheckoutRequest(BaseModel):
     checkouts: List[CheckoutItem]
 
 
-class PaymentInitResponse(BaseModel):
-    status: bool
-    message: str
-    authorization_url: Optional[str]
-    reference: Optional[str]
-
-
-class PaymentVerifyResponse(BaseModel):
-    status: bool
-    message: str
-    order_status: Optional[str] = None
-    reference: Optional[str] = None
-
-
 # ==============================
 # 🛒 INITIATE CHECKOUT
 # ==============================
-@router.post("/", response_model=PaymentInitResponse)
+@router.post("/")
 def initiate_checkout(
     body: CheckoutRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Create an order, order items, and initialize Paystack payment.
+    Create an order, add items, and initialize Paystack payment.
     """
 
-    # 1️⃣ Create order record
+    # 1️⃣ Create Order
     new_order = Order(
         user_id=current_user.id,
         total_amount=body.amount,
@@ -86,9 +77,9 @@ def initiate_checkout(
     db.commit()
     db.refresh(new_order)
 
-    # 2️⃣ Create order items
+    # 2️⃣ Add Order Items
     for item in body.checkouts:
-        subtotal = item.discountPrice * item.quantity  # ✅ calculate subtotal
+        subtotal = item.discountPrice * item.quantity
 
         db_item = OrderItem(
             order_id=new_order.id,
@@ -98,25 +89,21 @@ def initiate_checkout(
             price=item.price,
             discount_price=item.discountPrice,
             type_id=item.type.id,
-            subtotal=subtotal,  # ✅ store subtotal
+            subtotal=subtotal,
         )
         db.add(db_item)
-
     db.commit()
 
-    # 3️⃣ Initialize payment with Paystack
+    # 3️⃣ Initialize Payment (no manual reference)
     headers = {
         "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
         "Content-Type": "application/json",
     }
 
-    reference = f"ORDER_{new_order.id}_{int(datetime.utcnow().timestamp())}"
-
     payload = {
         "email": current_user.email,
-        "amount": int(body.amount * 100),  # Paystack expects amount in kobo
-        "reference": reference,
-        "callback_url": "https://aquasense-backend-jsa5.onrender.com/api/v1/checkout/payment/verify",
+        "amount": int(body.amount * 100),  # Paystack needs amount in kobo
+        "callback_url": "https://aquasense-backend-jsa5.onrender.com/api/v1/checkout/verify",
     }
 
     response = requests.post(
@@ -124,7 +111,6 @@ def initiate_checkout(
         json=payload,
         headers=headers,
     )
-
     res_data = response.json()
 
     if not res_data.get("status"):
@@ -133,22 +119,34 @@ def initiate_checkout(
             detail=res_data.get("message", "Payment initialization failed"),
         )
 
-    # Save reference to DB
-    new_order.reference = res_data["data"]["reference"]
+    # 4️⃣ Save Paystack reference in DB
+    paystack_ref = res_data["data"]["reference"]
+    new_order.payment_reference = paystack_ref
     db.commit()
 
-    return PaymentInitResponse(
-        status=True,
-        message="Payment initialized successfully",
-        authorization_url=res_data["data"]["authorization_url"],
-        reference=res_data["data"]["reference"],
-    )
+    # 5️⃣ Return clean response
+    return {
+        "message": "Order created. Proceed to Paystack payment.",
+        "authorization_url": res_data["data"]["authorization_url"],
+        "reference": paystack_ref,
+        "order_id": new_order.id,
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "profilepicture": getattr(current_user, "profilepicture", None),
+            "phone": getattr(current_user, "phone", None),
+            "kyc_status": getattr(current_user, "kyc_status", "unverified"),
+            "emailverified": getattr(current_user, "emailverified", True),
+        },
+    }
 
 
 # ==============================
 # 🔍 VERIFY PAYMENT
 # ==============================
-@router.get("/verify/{reference}", response_model=PaymentVerifyResponse)
+@router.get("/verify/{reference}")
 def verify_payment(reference: str, db: Session = Depends(get_db)):
     """
     Verify Paystack transaction and update order status.
@@ -165,16 +163,15 @@ def verify_payment(reference: str, db: Session = Depends(get_db)):
             detail=res_data.get("message", "Unable to verify payment"),
         )
 
-    # Get payment data
     data = res_data.get("data", {})
     payment_status = data.get("status")
 
-    # Find order
-    order = db.query(Order).filter(Order.reference == reference).first()
+    # 🔍 Find the order by Paystack reference
+    order = db.query(Order).filter(Order.payment_reference == reference).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=404, detail="Transaction reference not found.")
 
-    # Update status
+    # ✅ Update status
     if payment_status == "success":
         order.status = "paid"
     else:
@@ -182,9 +179,58 @@ def verify_payment(reference: str, db: Session = Depends(get_db)):
 
     db.commit()
 
-    return PaymentVerifyResponse(
-        status=True,
-        message="Payment verification complete",
-        order_status=order.status,
-        reference=reference,
+    return {
+        "status": True,
+        "message": "Payment verification complete",
+        "order_status": order.status,
+        "reference": reference,
+    }
+
+
+@router.post("/webhook")
+async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Handle Paystack payment webhook.
+    Verifies signature and updates order automatically.
+    """
+    payload = await request.body()
+    signature = request.headers.get("x-paystack-signature")
+
+    # Verify Paystack signature
+    computed_signature = hmac.new(
+        PAYSTACK_SECRET_KEY.encode("utf-8"),
+        msg=payload,
+        digestmod=hashlib.sha512
+    ).hexdigest()
+
+    if signature != computed_signature:
+        raise HTTPException(status_code=400, detail="Invalid Paystack signature")
+
+    data = await request.json()
+    event = data.get("event")
+    event_data = data.get("data", {})
+
+    # ✅ Get reference
+    reference = event_data.get("reference")
+    order = db.query(Order).filter(Order.payment_reference == reference).first()
+
+    if not order:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "Order not found for reference."}
+        )
+
+    # ✅ Handle payment events
+    if event == "charge.success":
+        order.status = "paid"
+    elif event in ["charge.failed", "payment.failed"]:
+        order.status = "failed"
+    elif event == "refund.processed":
+        order.status = "refunded"
+
+    db.commit()
+
+    return JSONResponse(
+        status_code=200,
+        content={"message": f"Webhook processed: {event}", "status": order.status}
     )
