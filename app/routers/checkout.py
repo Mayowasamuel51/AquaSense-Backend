@@ -316,3 +316,78 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
         status_code=200,
         content={"message": f"Webhook processed: {event}", "status": order.status}
     )
+
+@router.get("/my-orders", summary="Get all orders for the logged-in user")
+def get_my_orders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Fetch all orders made by the currently authenticated user,
+    including their order items and related details.
+    """
+    user_id = current_user.id
+
+    orders = (
+        db.query(Order)
+        .filter(Order.user_id == user_id)
+        .order_by(Order.id.desc())
+        .all()
+    )
+
+    if not orders:
+        raise HTTPException(status_code=404, detail="No orders found for this user")
+
+    all_orders = []
+
+    for order in orders:
+        # Fetch items for this order
+        items = (
+            db.query(OrderItem)
+            .filter(OrderItem.order_id == order.id)
+            .all()
+        )
+
+        order_items = []
+        for item in items:
+            product = db.query(Product).filter(Product.id == item.product_id).first()
+            vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
+
+            order_items.append({
+                "product": {
+                    "id": product.id if product else None,
+                    "name": product.title if product else "Unknown Product",
+                },
+                "vendor": {
+                    "id": vendor.id if vendor else None,
+                    "name": f"{vendor.first_name or ''} {vendor.last_name or ''}".strip() if vendor else "Unknown Vendor",
+                },
+                "quantity": item.quantity,
+                "price": item.price,
+                "discount_price": item.discount_price,
+                "subtotal": item.subtotal,
+            })
+
+        order_data = {
+            "id": order.id,
+            "total_amount": order.total_amount,
+            "status": order.status,
+            "reference": order.payment_reference,
+            "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "items": order_items,
+        }
+
+        all_orders.append(order_data)
+
+    return {
+        "success": True,
+        "message": "User orders retrieved successfully",
+        "user": {
+            "id": current_user.id,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "email": current_user.email,
+        },
+        "total_orders": len(all_orders),
+        "orders": all_orders,
+    }
