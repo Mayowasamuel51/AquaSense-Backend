@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session, joinedload
 import jwt
 from ..database import get_db
 from ..config import settings
-from ..models import Vendor, Product, ProductType
+from ..models import Vendor, Product, ProductType, User
 from ..schemas import ProductCreate, ProductResponse
-
+from ..dep.security import get_current_user
 router = APIRouter(prefix="/products", tags=["Vendor Products"])
 
 SECRET_KEY = settings.JWT_SECRET
@@ -138,7 +138,10 @@ class MainProductOutResponse(BaseModel):
 
 
 @router.get("/", response_model=MainProductOutResponse)
-def get_all_products(db: Session = Depends(get_db)):
+def get_all_products(user: User = Depends(get_current_user),db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
     products = db.query(Product).options(
         joinedload(Product.types),
         joinedload(Product.vendor)  # ✅ load vendor relationship
@@ -148,6 +151,30 @@ def get_all_products(db: Session = Depends(get_db)):
         "message": "showing all product",
         "data": products
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #
 #

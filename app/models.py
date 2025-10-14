@@ -126,6 +126,8 @@ class User(Base):
 
     # ✅ Add relationship to VetSupport
     vetsupports = relationship("VetSupport", back_populates="user", cascade="all, delete-orphan")
+    # ✅ Relationship to Orders
+    orders = relationship("Order", back_populates="user")
 
 class Vendor(Base):
     __tablename__ = "vendor"
@@ -181,6 +183,43 @@ class ProductType(Base):
     value_price = Column(Float, nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"))
     product = relationship("Product", back_populates="types")
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    total_amount = Column(Float, nullable=False)
+    status = Column(String(50), default="pending")
+    payment_reference = Column(String(255), unique=True, nullable=True)
+    payment_verified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="orders")
+    items = relationship("OrderItem", back_populates="order", cascade="all, delete")
+
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    vendor_id = Column(Integer, ForeignKey("vendor.id"))  # ✅ fixed here
+    type_id = Column(Integer, ForeignKey("product_types.id"))
+    quantity = Column(Integer, default=1)
+    price = Column(Float, nullable=False)
+    discount_price = Column(Float, nullable=True)
+    subtotal = Column(Float, nullable=False)
+
+    order = relationship("Order", back_populates="items")
+    product = relationship("Product")
+    vendor = relationship("Vendor")
+    type = relationship("ProductType")
+
+
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
@@ -716,7 +755,7 @@ class LabTest(Base):
     test_price = Column(Float, nullable=False)
 
     lab = relationship("Labs", back_populates="tests")
-#
+
 # class LabTest(Base):
 #     __tablename__ = "lab_tests"
 #     id = Column(Integer, primary_key=True, index=True)

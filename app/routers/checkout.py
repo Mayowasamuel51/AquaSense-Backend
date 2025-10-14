@@ -1,211 +1,190 @@
-import os
-import requests
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from typing import List, Optional
+from datetime import datetime
+import requests
+import os
+
 from ..database import get_db
-from ..models import User, Product, ProductType, Transaction
+from ..models import Order, OrderItem, Product, Vendor, User
 from ..dep.security import get_current_user
+from ..config import settings
+from pydantic import BaseModel
 
-router = APIRouter(prefix="/checkout", tags=["checkout"])
+router = APIRouter(prefix="/checkout", tags=["Orders & Payments"])
 
-# -------------------------------
-# Config
-# -------------------------------
+# ==============================
+# ✅ PAYSTACK CONFIG
+# ==============================
 PAYSTACK_SECRET_KEY = os.getenv(
     "PAYSTACK_SECRET_KEY", "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
 )
 PAYSTACK_BASE_URL = os.getenv("PAYSTACK_BASE_URL", "https://api.paystack.co")
 
-COINS_PER_ITEM = 100        # 100 coins allowed per item
-NAIRA_PER_100_COINS = 500   # 100 coins = ₦500 discount
 
-# -------------------------------
-# Schemas
-# -------------------------------
-class CheckoutItem(BaseModel):
-    product_id: int
-    product_type_id: Optional[int] = None   # if buying a variant
-    unit_price: float
+# ==============================
+# 🧾 SCHEMAS
+# ==============================
+class ProductTypeData(BaseModel):
+    id: int
+    type_value: str
+    value_measurement: str
+    value_price: float
     quantity: int
-    coins_used: int
-    subtotal: float
 
-class CheckoutPayload(BaseModel):
-    items: List[CheckoutItem]
-    total_before_discount: float
-    total_discount: float
-    total_after_discount: float
 
-# -------------------------------
-# Paystack helper
-# -------------------------------
-def initialize_paystack(email: str, amount: int):
-    url = f"{PAYSTACK_BASE_URL}/transaction/initialize"
-    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    payload = {"email": email, "amount": amount * 100}  # Naira → Kobo
+class CheckoutItem(BaseModel):
+    productId: int
+    vendor: int
+    type: ProductTypeData
+    quantity: int
+    price: float
+    discountPrice: float
 
-    res = requests.post(url, json=payload, headers=headers)
-    if res.status_code != 200:
-        raise HTTPException(status_code=400, detail="Paystack init failed")
 
-    return res.json()["data"]
+class CheckoutRequest(BaseModel):
+    amount: float
+    checkouts: List[CheckoutItem]
 
-# -------------------------------
-# Checkout endpoint
-# -------------------------------
-@router.post("/")
-def checkout(
-    order: CheckoutPayload,
+
+class PaymentInitResponse(BaseModel):
+    status: bool
+    message: str
+    authorization_url: Optional[str]
+    reference: Optional[str]
+
+
+class PaymentVerifyResponse(BaseModel):
+    status: bool
+    message: str
+    order_status: Optional[str] = None
+    reference: Optional[str] = None
+
+
+# ==============================
+# 🛒 INITIATE CHECKOUT
+# ==============================
+@router.post("/", response_model=PaymentInitResponse)
+def initiate_checkout(
+    body: CheckoutRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    total_discount_calculated = 0
-    coins_needed = 0
-    total_from_products = 0
-    db_user = db.query(User).filter(User.id == user.id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+    """
+    Create an order, order items, and initialize Paystack payment.
+    """
 
-    # 🔹 Step 1: Verify each product against DB
-    for item in order.items:
-        db_product = db.query(Product).filter(Product.id == item.product_id).first()
-        if not db_product:
-            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
-
-        # 🔹 Check if it's a typed product
-        if db_product.types:
-            db_type = db.query(ProductType).filter(
-                ProductType.product_id == item.product_id
-            ).first()
-
-            if not db_type:
-                raise HTTPException(status_code=404, detail="Product type not found")
-
-            if db_type.quantity < item.quantity:
-                raise HTTPException(status_code=400, detail="Not enough stock for this product type")
-        else:
-            # 🔹 Check product-level stock
-            if db_product.quantity < item.quantity:
-                raise HTTPException(status_code=400, detail="Not enough stock for this product")
-
-    # 🔹 Step 3: Validate totals from frontend
-    if total_from_products != order.total_before_discount:
-        raise HTTPException(status_code=400, detail="Price mismatch in request")
-
-    if user.coin_caps < coins_needed:
-        raise HTTPException(status_code=400, detail="Not enough coins in wallet")
-
-    expected_total = order.total_before_discount - total_discount_calculated
-    if expected_total != order.total_after_discount:
-        raise HTTPException(status_code=400, detail="Totals mismatch")
-
-    # 🔹 Step 4: Deduct coins
-    user.coin_caps -= coins_needed
-    db.commit()
-
-    # 🔹 Step 5: Create transaction record
-    transaction = Transaction(
-        user_id=user.id,
-        total_amount=order.total_before_discount,
-        coins_used=coins_needed,
-        discount=total_discount_calculated,
-        final_amount=expected_total,
+    # 1️⃣ Create order record
+    new_order = Order(
+        user_id=current_user.id,
+        total_amount=body.amount,
         status="pending",
+        created_at=datetime.utcnow(),
     )
-    db.add(transaction)
+    db.add(new_order)
     db.commit()
-    db.refresh(transaction)
+    db.refresh(new_order)
 
-    # 🔹 Step 6: Handle Paystack or mark as success
-    if expected_total > 0:
-        paystack_data = initialize_paystack(user.email, expected_total)
-        transaction.paystack_ref = paystack_data["reference"]
-        db.commit()
-        return {
-            "message": "Partially paid with coins. Complete with Paystack.",
-            "status": "pending",
-            "coins_used": coins_needed,
-            "discount": total_discount_calculated,
-            "amount_to_pay": expected_total,
-            "paystack": paystack_data,
-            "transaction_id": transaction.id,
-        }
+    # 2️⃣ Create order items
+    for item in body.checkouts:
+        subtotal = item.discountPrice * item.quantity  # ✅ calculate subtotal
 
-    # Fully paid with coins → mark success + reduce stock
-    transaction.status = "success"
-    db.commit()
+        db_item = OrderItem(
+            order_id=new_order.id,
+            product_id=item.productId,
+            vendor_id=item.vendor,
+            quantity=item.quantity,
+            price=item.price,
+            discount_price=item.discountPrice,
+            type_id=item.type.id,
+            subtotal=subtotal,  # ✅ store subtotal
+        )
+        db.add(db_item)
 
-    for item in order.items:
-        if item.product_type_id:
-            db_type = db.query(ProductType).filter(ProductType.id == item.product_type_id).first()
-            db_type.quantity -= item.quantity
-        else:
-            db_product = db.query(Product).filter(Product.id == item.product_id).first()
-            db_product.quantity -= item.quantity
     db.commit()
 
-    return {
-        "message": "Paid fully with coins",
-        "status": "success",
-        "coins_used": coins_needed,
-        "discount": total_discount_calculated,
-        "amount_to_pay": 0,
-        "transaction_id": transaction.id,
+    # 3️⃣ Initialize payment with Paystack
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json",
     }
 
-@router.get("/verify/{reference}")
-def verify_payment(reference: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    reference = f"ORDER_{new_order.id}_{int(datetime.utcnow().timestamp())}"
+
+    payload = {
+        "email": current_user.email,
+        "amount": int(body.amount * 100),  # Paystack expects amount in kobo
+        "reference": reference,
+        "callback_url": "https://aquasense-backend-jsa5.onrender.com/api/v1/checkout/payment/verify",
+    }
+
+    response = requests.post(
+        f"{PAYSTACK_BASE_URL}/transaction/initialize",
+        json=payload,
+        headers=headers,
+    )
+
+    res_data = response.json()
+
+    if not res_data.get("status"):
+        raise HTTPException(
+            status_code=400,
+            detail=res_data.get("message", "Payment initialization failed"),
+        )
+
+    # Save reference to DB
+    new_order.reference = res_data["data"]["reference"]
+    db.commit()
+
+    return PaymentInitResponse(
+        status=True,
+        message="Payment initialized successfully",
+        authorization_url=res_data["data"]["authorization_url"],
+        reference=res_data["data"]["reference"],
+    )
+
+
+# ==============================
+# 🔍 VERIFY PAYMENT
+# ==============================
+@router.get("/verify/{reference}", response_model=PaymentVerifyResponse)
+def verify_payment(reference: str, db: Session = Depends(get_db)):
     """
-    Verify Paystack payment after user completes transaction.
+    Verify Paystack transaction and update order status.
     """
-    # 🔹 Find transaction
-    transaction = db.query(Transaction).filter(
-        Transaction.paystack_ref == reference,
-        Transaction.user_id == user.id
-    ).first()
-
-    if not transaction:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-
-    if transaction.status == "success":
-        return {"message": "Payment already verified", "transaction_id": transaction.id}
-
-    # 🔹 Call Paystack API
-    url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    res = requests.get(url, headers=headers)
+    verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
 
-    if res.status_code != 200:
-        raise HTTPException(status_code=400, detail="Paystack verification failed")
+    response = requests.get(verify_url, headers=headers)
+    res_data = response.json()
 
-    data = res.json()
-    if data["data"]["status"] != "success":
-        raise HTTPException(status_code=400, detail="Payment not successful")
+    if not res_data.get("status"):
+        raise HTTPException(
+            status_code=400,
+            detail=res_data.get("message", "Unable to verify payment"),
+        )
 
-    # 🔹 Update transaction
-    transaction.status = "success"
+    # Get payment data
+    data = res_data.get("data", {})
+    payment_status = data.get("status")
+
+    # Find order
+    order = db.query(Order).filter(Order.reference == reference).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Update status
+    if payment_status == "success":
+        order.status = "paid"
+    else:
+        order.status = "failed"
+
     db.commit()
 
-    # 🔹 Deduct stock now that payment is confirmed
-    # (Assuming you have a TransactionItem table or store items in payload JSON)
-    # For now, I’ll show inline approach if you store `items_json` in Transaction
-    if hasattr(transaction, "items_json") and transaction.items_json:
-        for item in transaction.items_json:
-            if item["product_type_id"]:
-                db_type = db.query(ProductType).filter(ProductType.id == item["product_type_id"]).first()
-                if db_type and db_type.quantity >= item["quantity"]:
-                    db_type.quantity -= item["quantity"]
-            else:
-                db_product = db.query(Product).filter(Product.id == item["product_id"]).first()
-                if db_product and db_product.quantity >= item["quantity"]:
-                    db_product.quantity -= item["quantity"]
-        db.commit()
-
-    return {
-        "message": "Payment verified successfully",
-        "status": "success",
-        "transaction_id": transaction.id,
-        "final_amount": transaction.final_amount
-    }
+    return PaymentVerifyResponse(
+        status=True,
+        message="Payment verification complete",
+        order_status=order.status,
+        reference=reference,
+    )
