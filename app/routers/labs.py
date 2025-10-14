@@ -38,6 +38,7 @@ def initialize_paystack(email: str, amount: float):
     payload = {
         "email": email,
         "amount": int(amount * 100),
+        # "callback_url":"https://aquasense-backend-jsa5.onrender.com/api/v1/paystack/webhook"
         "callback_url":"https://aquasense-backend-jsa5.onrender.com/api/v1/labs/paystack/callback"
     }
 
