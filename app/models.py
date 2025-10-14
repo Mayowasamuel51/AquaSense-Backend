@@ -199,7 +199,13 @@ class Order(Base):
     #
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete")
-
+class WebhookLog(Base):
+    __tablename__ = "webhook_logs"
+    id = Column(Integer, primary_key=True)
+    event = Column(String(100))
+    reference = Column(String(100))
+    payload = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class OrderItem(Base):
