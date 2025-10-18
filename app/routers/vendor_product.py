@@ -91,6 +91,8 @@ class VendorPublic(BaseModel):
     address: Optional[str]
     state: Optional[str]
     area: Optional[str]
+    pick_up_station_address : Optional[str]
+    opening_hour: Optional[str]
     profilepicture: Optional[str]
     kyc_status: Optional[str]
 

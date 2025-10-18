@@ -126,6 +126,7 @@ class User(Base):
 
     # ✅ Add relationship to VetSupport
     vetsupports = relationship("VetSupport", back_populates="user", cascade="all, delete-orphan")
+    addresses = relationship("DeliveryAddress", back_populates="user", cascade="all, delete-orphan")
     # ✅ Relationship to Orders
     orders = relationship("Order", back_populates="user")
 
@@ -149,6 +150,8 @@ class Vendor(Base):
     city = Column(String(100), nullable=True)
     state = Column(String(100), nullable=True)
     area = Column(String(100), nullable=True)
+    pick_up_station_address  = Column(String(100), nullable=True , default="Aquasense pickup station 1 Montgomery Road Ikeja, Lagos")
+    opening_hour = Column(String(200), nullable=True , default="Monday - Friday 8 AM - 6 PM; Saturday 9 AM - 6 PM")
     # relationship to tokens
     tokens = relationship("VerificationToken", back_populates="vendor")
     products = relationship("Product", back_populates="vendor", cascade="all, delete-orphan")
@@ -187,7 +190,6 @@ class ProductType(Base):
 
 class Order(Base):
     __tablename__ = "orders"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     total_amount = Column(Float, nullable=False)
@@ -196,9 +198,25 @@ class Order(Base):
     # payment_reference = Column(String(255), unique=True, nullable=True)
     payment_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    #
+    delivery_address_id = Column(Integer, ForeignKey("delivery_addresses.id"), nullable=True)
+    delivery_address = relationship("DeliveryAddress")
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete")
+
+class DeliveryAddress(Base):
+    __tablename__ = "delivery_addresses"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    recipient_name = Column(String(100), nullable=True)
+    phone_number = Column(String(50), nullable=True)
+    address = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    postal_code = Column(String(20), nullable=True)
+    delivery_instructions = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # Relationship
+    user = relationship("User", back_populates="addresses")
 class WebhookLog(Base):
     __tablename__ = "webhook_logs"
     id = Column(Integer, primary_key=True)

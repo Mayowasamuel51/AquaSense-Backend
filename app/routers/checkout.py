@@ -11,16 +11,16 @@ import hashlib
 from starlette.responses import JSONResponse, HTMLResponse
 
 from ..database import get_db
-from ..models import Order, OrderItem, Product, Vendor, User
+from ..models import Order, OrderItem, Product, Vendor, User, DeliveryAddress
 from ..dep.security import get_current_user
 from ..config import settings
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/checkout", tags=["Orders & Payments"])
-
-# ==============================
-# ✅ PAYSTACK CONFIG
-# ==============================
+#
+# # ==============================
+# # ✅ PAYSTACK CONFIG
+# # ==============================
 PAYSTACK_SECRET_KEY = os.getenv(
     "PAYSTACK_SECRET_KEY",
     "sk_test_3e95cf7e607da264fecc599fe380ac04e217944c"
@@ -47,15 +47,21 @@ class CheckoutItem(BaseModel):
     price: float
     discountPrice: float
 
-
 class CheckoutRequest(BaseModel):
     amount: float
+    delivery_address_id: int
     checkouts: List[CheckoutItem]
 
+class DeliveryInfo(BaseModel):
+    recipient_name: str
+    phone_number: str
+    address: str
+    city: str
+    state: str
+    postal_code: Optional[str] = None
+    delivery_instructions: Optional[str] = None
 
-# ==============================
-# 🛒 INITIATE CHECKOUT
-# ==============================
+
 @router.post("/")
 def initiate_checkout(
     body: CheckoutRequest,
@@ -63,24 +69,35 @@ def initiate_checkout(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Create an order, add items, and initialize Paystack payment.
+    Create an order linked to a saved delivery address, add items, and initialize Paystack payment.
     """
+    # ✅ 1. Verify delivery address belongs to user
+    delivery_address = db.query(DeliveryAddress).filter(
+        DeliveryAddress.id == body.delivery_address_id,
+        DeliveryAddress.user_id == current_user.id
+    ).first()
 
-    # 1️⃣ Create Order
+    if not delivery_address:
+        raise HTTPException(
+            status_code=404,
+            detail="Invalid delivery address or not associated with current user."
+        )
+
+    # ✅ 2. Create Order (link to delivery_address_id)
     new_order = Order(
         user_id=current_user.id,
         total_amount=body.amount,
         status="pending",
         created_at=datetime.utcnow(),
+        delivery_address_id=delivery_address.id,
     )
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
 
-    # 2️⃣ Add Order Items
+    # ✅ 3. Add Order Items
     for item in body.checkouts:
         subtotal = item.discountPrice * item.quantity
-
         db_item = OrderItem(
             order_id=new_order.id,
             product_id=item.productId,
@@ -94,60 +111,145 @@ def initiate_checkout(
         db.add(db_item)
     db.commit()
 
-    # 3️⃣ Initialize Payment (no manual reference)
+    # ✅ 4. Initialize Paystack
     headers = {
         "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
         "Content-Type": "application/json",
     }
-
     payload = {
         "email": current_user.email,
-        "amount": int(body.amount * 100),  # Paystack needs amount in kobo
-        # "callback_url":"https://aquasense-backend-jsa5.onrender.com/api/v1/paystack/webhook"
-        # "callback_url": "https://aquasense-backend-jsa5.onrender.com/api/v1/checkout/verify",
+        "amount": int(body.amount * 100),
         "callback_url": "https://aquasense-backend-jsa5.onrender.com/api/v1/checkout/paystack/callback"
     }
 
-    response = requests.post(
-        f"{PAYSTACK_BASE_URL}/transaction/initialize",
-        json=payload,
-        headers=headers,
-    )
+    response = requests.post(f"{PAYSTACK_BASE_URL}/transaction/initialize", json=payload, headers=headers)
     res_data = response.json()
 
     if not res_data.get("status"):
-        raise HTTPException(
-            status_code=400,
-            detail=res_data.get("message", "Payment initialization failed"),
-        )
+        raise HTTPException(status_code=400, detail=res_data.get("message", "Payment initialization failed"))
 
-    # 4️⃣ Save Paystack reference in DB
     paystack_ref = res_data["data"]["reference"]
     new_order.payment_reference = paystack_ref
     db.commit()
 
-    # 5️⃣ Return clean response
+    # ✅ 5. Return response
     return {
         "message": "Order created. Proceed to Paystack payment.",
         "authorization_url": res_data["data"]["authorization_url"],
         "reference": paystack_ref,
         "order_id": new_order.id,
+        "delivery_address": {
+            "id": delivery_address.id,
+            "recipient_name": delivery_address.recipient_name,
+            "phone_number": delivery_address.phone_number,
+            "address": delivery_address.address,
+            "city": delivery_address.city,
+            "state": delivery_address.state,
+            "postal_code": delivery_address.postal_code,
+            "delivery_instructions": delivery_address.delivery_instructions,
+        },
         "user": {
             "id": current_user.id,
             "email": current_user.email,
             "first_name": current_user.first_name,
             "last_name": current_user.last_name,
-            "profilepicture": getattr(current_user, "profilepicture", None),
-            "phone": getattr(current_user, "phone", None),
-            "kyc_status": getattr(current_user, "kyc_status", "unverified"),
-            "emailverified": getattr(current_user, "emailverified", True),
         },
     }
-
-
-# ==============================
-# 🔍 VERIFY PAYMENT
-# ==============================
+# # ==============================
+# # 🛒 INITIATE CHECKOUT
+# # ==============================
+# @router.post("/")
+# def initiate_checkout(
+#     body: CheckoutRequest,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user),
+# ):
+#     """
+#     Create an order, add items, and initialize Paystack payment.
+#     """
+#
+#     # 1️⃣ Create Order
+#     new_order = Order(
+#         user_id=current_user.id,
+#         total_amount=body.amount,
+#         status="pending",
+#         created_at=datetime.utcnow(),
+#     )
+#     db.add(new_order)
+#     db.commit()
+#     db.refresh(new_order)
+#
+#     # 2️⃣ Add Order Items
+#     for item in body.checkouts:
+#         subtotal = item.discountPrice * item.quantity
+#
+#         db_item = OrderItem(
+#             order_id=new_order.id,
+#             product_id=item.productId,
+#             vendor_id=item.vendor,
+#             quantity=item.quantity,
+#             price=item.price,
+#             discount_price=item.discountPrice,
+#             type_id=item.type.id,
+#             subtotal=subtotal,
+#         )
+#         db.add(db_item)
+#     db.commit()
+#
+#     # 3️⃣ Initialize Payment (no manual reference)
+#     headers = {
+#         "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+#         "Content-Type": "application/json",
+#     }
+#
+#     payload = {
+#         "email": current_user.email,
+#         "amount": int(body.amount * 100),  # Paystack needs amount in kobo
+#         # "callback_url":"https://aquasense-backend-jsa5.onrender.com/api/v1/paystack/webhook"
+#         # "callback_url": "https://aquasense-backend-jsa5.onrender.com/api/v1/checkout/verify",
+#         "callback_url": "https://aquasense-backend-jsa5.onrender.com/api/v1/checkout/paystack/callback"
+#     }
+#
+#     response = requests.post(
+#         f"{PAYSTACK_BASE_URL}/transaction/initialize",
+#         json=payload,
+#         headers=headers,
+#     )
+#     res_data = response.json()
+#
+#     if not res_data.get("status"):
+#         raise HTTPException(
+#             status_code=400,
+#             detail=res_data.get("message", "Payment initialization failed"),
+#         )
+#
+#     # 4️⃣ Save Paystack reference in DB
+#     paystack_ref = res_data["data"]["reference"]
+#     new_order.payment_reference = paystack_ref
+#     db.commit()
+#
+#     # 5️⃣ Return clean response
+#     return {
+#         "message": "Order created. Proceed to Paystack payment.",
+#         "authorization_url": res_data["data"]["authorization_url"],
+#         "reference": paystack_ref,
+#         "order_id": new_order.id,
+#         "user": {
+#             "id": current_user.id,
+#             "email": current_user.email,
+#             "first_name": current_user.first_name,
+#             "last_name": current_user.last_name,
+#             "profilepicture": getattr(current_user, "profilepicture", None),
+#             "phone": getattr(current_user, "phone", None),
+#             "kyc_status": getattr(current_user, "kyc_status", "unverified"),
+#             "emailverified": getattr(current_user, "emailverified", True),
+#         },
+#     }
+#
+#
+# # ==============================
+# # 🔍 VERIFY PAYMENT
+# # ==============================
 @router.get("/verify/{reference}")
 def verify_payment(reference: str, db: Session = Depends(get_db)):
     """
@@ -251,7 +353,7 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
         <html>
           <head><title>Payment {status.title()}</title></head>
           <body style="text-align:center; font-family: Arial; margin-top:50px;">
-            <h2>Payment Status: 
+            <h2>Payment Status:
                 <span style="color:{'green' if status == 'success' else 'red'}">
                     {status.upper()}
                 </span>
@@ -317,6 +419,7 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
         content={"message": f"Webhook processed: {event}", "status": order.status}
     )
 
+
 @router.get("/my-orders", summary="Get all orders for the logged-in user")
 def get_my_orders(
     db: Session = Depends(get_db),
@@ -324,7 +427,7 @@ def get_my_orders(
 ):
     """
     Fetch all orders made by the currently authenticated user,
-    including their order items and related details.
+    including their order items and delivery details.
     """
     user_id = current_user.id
 
@@ -341,12 +444,8 @@ def get_my_orders(
     all_orders = []
 
     for order in orders:
-        # Fetch items for this order
-        items = (
-            db.query(OrderItem)
-            .filter(OrderItem.order_id == order.id)
-            .all()
-        )
+        # 🛒 Fetch items for this order
+        items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
 
         order_items = []
         for item in items:
@@ -368,12 +467,30 @@ def get_my_orders(
                 "subtotal": item.subtotal,
             })
 
+        # 📦 Include delivery address info
+        delivery = order.delivery_address
+        delivery_info = None
+        if delivery:
+            delivery_info = {
+                "id": delivery.id,
+                "recipient_name": delivery.recipient_name,
+                "phone_number": delivery.phone_number,
+                "address": delivery.address,
+                "city": delivery.city,
+                "state": delivery.state,
+                "postal_code": delivery.postal_code,
+                "delivery_instructions": delivery.delivery_instructions,
+                "created_at": delivery.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+
+        # 🧾 Assemble full order data
         order_data = {
             "id": order.id,
             "total_amount": order.total_amount,
             "status": order.status,
             "reference": order.payment_reference,
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "delivery_address": delivery_info,
             "items": order_items,
         }
 
@@ -391,3 +508,78 @@ def get_my_orders(
         "total_orders": len(all_orders),
         "orders": all_orders,
     }
+
+# @router.get("/my-orders", summary="Get all orders for the logged-in user")
+# def get_my_orders(
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     """
+#     Fetch all orders made by the currently authenticated user,
+#     including their order items and related details.
+#     """
+#     user_id = current_user.id
+#
+#     orders = (
+#         db.query(Order)
+#         .filter(Order.user_id == user_id)
+#         .order_by(Order.id.desc())
+#         .all()
+#     )
+#
+#     if not orders:
+#         raise HTTPException(status_code=404, detail="No orders found for this user")
+#
+#     all_orders = []
+#
+#     for order in orders:
+#         # Fetch items for this order
+#         items = (
+#             db.query(OrderItem)
+#             .filter(OrderItem.order_id == order.id)
+#             .all()
+#         )
+#
+#         order_items = []
+#         for item in items:
+#             product = db.query(Product).filter(Product.id == item.product_id).first()
+#             vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
+#
+#             order_items.append({
+#                 "product": {
+#                     "id": product.id if product else None,
+#                     "name": product.title if product else "Unknown Product",
+#                 },
+#                 "vendor": {
+#                     "id": vendor.id if vendor else None,
+#                     "name": f"{vendor.first_name or ''} {vendor.last_name or ''}".strip() if vendor else "Unknown Vendor",
+#                 },
+#                 "quantity": item.quantity,
+#                 "price": item.price,
+#                 "discount_price": item.discount_price,
+#                 "subtotal": item.subtotal,
+#             })
+#
+#         order_data = {
+#             "id": order.id,
+#             "total_amount": order.total_amount,
+#             "status": order.status,
+#             "reference": order.payment_reference,
+#             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+#             "items": order_items,
+#         }
+#
+#         all_orders.append(order_data)
+#
+#     return {
+#         "success": True,
+#         "message": "User orders retrieved successfully",
+#         "user": {
+#             "id": current_user.id,
+#             "first_name": current_user.first_name,
+#             "last_name": current_user.last_name,
+#             "email": current_user.email,
+#         },
+#         "total_orders": len(all_orders),
+#         "orders": all_orders,
+#     }
