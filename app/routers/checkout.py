@@ -291,31 +291,30 @@ def verify_payment(reference: str, db: Session = Depends(get_db)):
     }
 
 
-
 @router.get("/paystack/callback")
 def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
     """
     ✅ Callback URL that Paystack redirects to after payment.
-    This verifies the transaction and updates the order status.
+    This verifies the transaction, updates the order, and includes vendor info.
     """
     verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
     res = requests.get(verify_url, headers=headers)
     data = res.json()
 
-    # Find matching order
+    # 🧾 Find matching order
     order = db.query(Order).filter(Order.payment_reference == reference).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Extract key Paystack data
+    # 📊 Extract key Paystack data
     status = data.get("data", {}).get("status", "failed")
     amount_paid = data.get("data", {}).get("amount", 0) / 100
     channel = data.get("data", {}).get("channel", "unknown")
     gateway_response = data.get("data", {}).get("gateway_response", "")
     currency = data.get("data", {}).get("currency", "NGN")
 
-    # ✅ Update payment status in your Order table
+    # ✅ Update order status
     if status == "success":
         order.status = "paid"
     elif status == "failed":
@@ -325,7 +324,49 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
 
     db.commit()
 
-    # ✅ Prepare response data
+    # 🛒 Fetch related items and vendor info
+    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+    item_details = []
+
+    for item in items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
+
+        item_details.append({
+            "product": {
+                "id": product.id if product else None,
+                "name": product.title if product else "Unknown Product",
+                "price": item.price,
+            },
+            "vendor": {
+                "id": vendor.id if vendor else None,
+                "first_name": vendor.first_name if vendor else None,
+                "last_name": vendor.last_name if vendor else None,
+                "email": vendor.email if vendor else None,
+                "phone": vendor.phone if vendor else None,
+                "profilepicture": vendor.profilepicture if vendor else None,
+                "pick_up_station_address": vendor.pick_up_station_address if vendor else None,
+                "opening_hour":vendor.opening_hour if vendor else None,
+            },
+            "quantity": item.quantity,
+            "subtotal": item.subtotal,
+        })
+
+    # 📦 Delivery details (if present)
+    delivery = order.delivery_address
+    delivery_info = None
+    if delivery:
+        delivery_info = {
+            "recipient_name": delivery.recipient_name,
+            "phone_number": delivery.phone_number,
+            "address": delivery.address,
+            "city": delivery.city,
+            "state": delivery.state,
+            "postal_code": delivery.postal_code,
+            "delivery_instructions": delivery.delivery_instructions,
+        }
+
+    # ✅ Prepare full JSON response
     response_data = {
         "success": True,
         "message": "Payment verification completed",
@@ -335,20 +376,25 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
             "total_amount": order.total_amount,
             "status": order.status,
             "payment_reference": order.payment_reference,
+            "delivery_address": delivery_info,
+            "items": item_details,
         },
         "paystack": {
             "amount_paid": amount_paid,
             "channel": channel,
             "currency": currency,
             "gateway_response": gateway_response,
-        }
+        },
     }
 
-    # ✅ Detect client type (browser vs API client)
+    # 🖥️ HTML Response (for browser callback)
     accept_header = request.headers.get("accept", "")
-
     if "text/html" in accept_header:
-        # Return HTML page (for browser redirect)
+        vendor_names = ", ".join([
+            f"{i['vendor']['first_name']} {i['vendor']['last_name']}".strip()
+            for i in item_details if i["vendor"]["first_name"]
+        ]) or "Unknown Vendor"
+
         html = f"""
         <html>
           <head><title>Payment {status.title()}</title></head>
@@ -358,19 +404,105 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
                     {status.upper()}
                 </span>
             </h2>
-            <p>Reference: <b>{reference}</b></p>
-            <p>Amount Paid: ₦{amount_paid:,.2f}</p>
-            <p>Payment Method: {channel}</p>
-            <p>Gateway Response: {gateway_response}</p>
-            <br>
+            <p><b>Reference:</b> {reference}</p>
+            <p><b>Amount Paid:</b> ₦{amount_paid:,.2f}</p>
+            <p><b>Payment Method:</b> {channel}</p>
+            <p><b>Vendors:</b> {vendor_names}</p>
+            <p><b>Gateway Response:</b> {gateway_response}</p>
+            <hr>
+            {"<p><b>Delivery:</b> " + delivery_info['address'] + ", " + delivery_info['city'] + "</p>" if delivery_info else ""}
             <p>Thank you for shopping with us!</p>
           </body>
         </html>
         """
         return HTMLResponse(content=html)
 
-    # Return JSON for API clients
+    # 🧾 JSON for API clients
     return JSONResponse(content=response_data)
+
+
+
+
+# @router.get("/paystack/callback")
+# def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
+#     """
+#     ✅ Callback URL that Paystack redirects to after payment.
+#     This verifies the transaction and updates the order status.
+#     """
+#     verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+#     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+#     res = requests.get(verify_url, headers=headers)
+#     data = res.json()
+#
+#     # Find matching order
+#     order = db.query(Order).filter(Order.payment_reference == reference).first()
+#     if not order:
+#         raise HTTPException(status_code=404, detail="Order not found")
+#
+#     # Extract key Paystack data
+#     status = data.get("data", {}).get("status", "failed")
+#     amount_paid = data.get("data", {}).get("amount", 0) / 100
+#     channel = data.get("data", {}).get("channel", "unknown")
+#     gateway_response = data.get("data", {}).get("gateway_response", "")
+#     currency = data.get("data", {}).get("currency", "NGN")
+#
+#     # ✅ Update payment status in your Order table
+#     if status == "success":
+#         order.status = "paid"
+#     elif status == "failed":
+#         order.status = "failed"
+#     else:
+#         order.status = "pending"
+#
+#     db.commit()
+#
+#     # ✅ Prepare response data
+#     response_data = {
+#         "success": True,
+#         "message": "Payment verification completed",
+#         "payment_status": status,
+#         "order": {
+#             "id": order.id,
+#             "total_amount": order.total_amount,
+#             "status": order.status,
+#             "payment_reference": order.payment_reference,
+#         },
+#         "paystack": {
+#             "amount_paid": amount_paid,
+#             "channel": channel,
+#             "currency": currency,
+#             "gateway_response": gateway_response,
+#         }
+#     }
+#
+#     # ✅ Detect client type (browser vs API client)
+#     accept_header = request.headers.get("accept", "")
+#
+#     if "text/html" in accept_header:
+#         # Return HTML page (for browser redirect)
+#         html = f"""
+#         <html>
+#           <head><title>Payment {status.title()}</title></head>
+#           <body style="text-align:center; font-family: Arial; margin-top:50px;">
+#             <h2>Payment Status:
+#                 <span style="color:{'green' if status == 'success' else 'red'}">
+#                     {status.upper()}
+#                 </span>
+#             </h2>
+#             <p>Reference: <b>{reference}</b></p>
+#             <p>Amount Paid: ₦{amount_paid:,.2f}</p>
+#             <p>Payment Method: {channel}</p>
+#             <p>Gateway Response: {gateway_response}</p>
+#             <br>
+#             <p>Thank you for shopping with us!</p>
+#           </body>
+#         </html>
+#         """
+#         return HTMLResponse(content=html)
+#
+#     # Return JSON for API clients
+#     return JSONResponse(content=response_data)
+#
 @router.post("/webhook")
 async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
     """
