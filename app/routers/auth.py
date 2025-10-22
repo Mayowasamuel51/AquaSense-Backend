@@ -1,4 +1,5 @@
 from urllib.parse import quote_plus, unquote_plus
+import resend
 
 from fastapi import APIRouter, Depends, HTTPException , status
 from pydantic import BaseModel, EmailStr , ConfigDict ,  model_validator
@@ -30,9 +31,12 @@ print(11123)
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465
-EMAIL_ADDRESS = "aquasenseapp@gmail.com"       # change to your email
+EMAIL_ADDRESS = "aquasenseapp@gmail.com"
+# EMAIL_ADDRESS = "fpasam"
 EMAIL_PASSWORD  = "xnnz pxum rxoq cnaz"          # use app password (not raw Gmail pass)
 
+
+# FROM_EMAIL = "AquaSense+ <noreply@aquasenseplus.com>"
 # def send_verification_email(to_email: str, verify_url: str):
 #     msg = EmailMessage()
 #     msg['Subject'] = "Verify your AquaSense account"
@@ -157,49 +161,98 @@ EMAIL_HTML_TEMPLATE = """
 </html>
 """
 
-def send_verification_email(to_email: str, token: str, full_name: str ):
-    msg = EmailMessage()
-    msg['Subject'] = "Verify your AquaSense+ account"
-    msg['From'] = EMAIL_ADDRESS
-    msg['To'] = to_email
+# def send_verification_email(to_email: str, token: str, full_name: str ):
+#     msg = EmailMessage()
+#     msg['Subject'] = "Verify your AquaSense+ account"
+#     msg['From'] = EMAIL_ADDRESS
+#     msg['To'] = to_email
+#
+#     # Links
+#     deep_link = f"aquasense://verify?token={token}"
+#     web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
+#
+#     # ✅ Plain text fallback
+#     msg.set_content(f"""\
+#     Hi {full_name},
+#
+#     Thank you for registering with AquaSense!
+#
+#     Please verify your email by opening this link in the app:
+#     {deep_link}
 
-    # Links
+
+
+#
+#     If that doesn’t work, copy and paste this link into your browser:
+#     {web_link}
+#
+#     If you didn’t sign up, you can safely ignore this email.
+#     """)
+#
+#     # ✅ Render HTML with Jinja2
+#     template = Template(EMAIL_HTML_TEMPLATE)
+#     html_content = template.render(full_name=full_name, deep_link=deep_link, web_link=web_link)
+#
+#     # Attach HTML version
+#     msg.add_alternative(html_content, subtype="html")
+#     print(html_content)
+# # 587
+#     try:
+#         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+#             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+#             smtp.send_message(msg)
+#             logger.info(f"Verification email sent to {to_email}")
+#     except Exception as e:
+#         logger.error(f"Failed to send verification email: {e}")
+#         raise Exception(f"Failed to send verification email: {e}")
+# FROM_EMAIL = "AquaSense+ <noreply@apimypromospheretest.com.ng>"
+RESEND_API_KEY = "re_TbGCTK88_9jiyARuZAhPfcANEoESZdTx5"
+resend.api_key = "re_TbGCTK88_9jiyARuZAhPfcANEoESZdTx5"
+FROM_EMAIL = "AquaSense+ <noreply@apimypromospheretest.com.ng>"
+
+# print("🔑 My API key:", resend.api_key)  # should print the full key
+#
+# # 2️⃣ Now you can safely send the email
+# try:
+#     r = resend.Emails.send({
+#         "from": FROM_EMAIL,
+#         "to": "fpasamuelmayowa51@gmail.com",
+#         "subject": "Test Email from AquaSense+",
+#         "html": "<p>🎉 Hello from AquaSense+! Resend integration works perfectly.</p>"
+#     })
+#     print("✅ Email sent successfully:", r)
+# except Exception as e:
+#     print("❌ Failed to send email:", e)
+# r = resend.Emails.send({
+#     "from": "AquaSense+ <noreply@apimypromospheretest.com.ng>",
+#     "to": "fpasamuelmayowa51@gmail.com",
+#     "subject": "Test Email from AquaSense+",
+#     "html": "<p>🎉 Hello from AquaSense+! Resend integration works perfectly.</p>"
+# })
+#
+# print(r)
+# resend.api_key = "re_ChyhqSkG_22orBr2xWeqEasj6P7tMEGzx"
+# print("my apikey" , resend.api_key)
+def send_verification_email(to_email: str, token: str, full_name: str):
     deep_link = f"aquasense://verify?token={token}"
     web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
 
-    # ✅ Plain text fallback
-    msg.set_content(f"""\
-    Hi {full_name},
-
-    Thank you for registering with AquaSense!
-
-    Please verify your email by opening this link in the app:
-    {deep_link}
-
-    If that doesn’t work, copy and paste this link into your browser:
-    {web_link}
-
-    If you didn’t sign up, you can safely ignore this email.
-    """)
-
-    # ✅ Render HTML with Jinja2
+    # Render HTML (reuse your Jinja2 template)
+    from jinja2 import Template
     template = Template(EMAIL_HTML_TEMPLATE)
     html_content = template.render(full_name=full_name, deep_link=deep_link, web_link=web_link)
 
-    # Attach HTML version
-    msg.add_alternative(html_content, subtype="html")
-    print(html_content)
-# 587
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            smtp.send_message(msg)
-            logger.info(f"Verification email sent to {to_email}")
+        resend.Emails.send({
+            "from": "AquaSense+ <onboarding@resend.dev>",  # ✅ or use your verified domain email
+            "to": FROM_EMAIL,
+            "subject": "Verify your AquaSense+ account",
+            "html": html_content,
+        })
+        logger.info(f"Verification email sent to {to_email}")
     except Exception as e:
         logger.error(f"Failed to send verification email: {e}")
         raise Exception(f"Failed to send verification email: {e}")
-
-
 
 class RegisterIn(BaseModel):
     first_name: str
