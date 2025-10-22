@@ -233,6 +233,8 @@ FROM_EMAIL = "AquaSense+ <noreply@apimypromospheretest.com.ng>"
 # print(r)
 # resend.api_key = "re_ChyhqSkG_22orBr2xWeqEasj6P7tMEGzx"
 # print("my apikey" , resend.api_key)
+
+
 def send_verification_email(to_email: str, token: str, full_name: str):
     deep_link = f"aquasense://verify?token={token}"
     web_link = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
@@ -244,8 +246,8 @@ def send_verification_email(to_email: str, token: str, full_name: str):
 
     try:
         resend.Emails.send({
-            "from": "AquaSense+ <onboarding@resend.dev>",  # ✅ or use your verified domain email
-            "to": FROM_EMAIL,
+            "from": FROM_EMAIL,  # ✅ or use your verified domain email
+            "to": to_email,
             "subject": "Verify your AquaSense+ account",
             "html": html_content,
         })
