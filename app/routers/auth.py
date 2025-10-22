@@ -489,7 +489,45 @@ def verify_email(
 #             "email_verified": user.email_verified,
 #         },
 #     }
-@router.post("/resend-verification" , response_model=UserOutResponse)
+# @router.post("/resend-verification" , response_model=UserOutResponse)
+# def resend_verification_email(
+#     background_tasks: BackgroundTasks,
+#     user: User = Depends(get_current_user),
+#     db: Session = Depends(get_db)
+# ):
+#     db_user = db.query(User).filter(User.id == user.id).one_or_none()
+#     if not db_user:
+#         raise HTTPException(status_code=404, detail="User not found")
+#
+#     # 1. Check if already verified
+#     if db_user.emailverified:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Email is already verified"
+#         )
+#
+#     # 2. Generate a new token
+#     token = create_verification_token(db_user.id)
+#
+#     # 3. Save the new token (✅ keep old ones, don’t delete)
+#     db_token = VerificationToken(
+#         token=token,
+#         user_id=db_user.id,
+#     )
+#     db.add(db_token)
+#     db.commit()
+#     db.refresh(db_token)
+#
+#     # 4. Prepare verification link
+#     verify_url = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
+#
+#     # 5. Send email in background
+#     background_tasks.add_task(send_verification_email, db_user.email, token,
+#                               f"{db_user.first_name} {db_user.last_name}")
+#
+#     return {"message": "Verification email resent successfully",token:token,  "user": UserOut.from_orm(db_user) }
+
+@router.post("/resend-verification", response_model=UserOutResponse)
 def resend_verification_email(
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
@@ -509,7 +547,7 @@ def resend_verification_email(
     # 2. Generate a new token
     token = create_verification_token(db_user.id)
 
-    # 3. Save the new token (✅ keep old ones, don’t delete)
+    # 3. Save the new token (keep old ones)
     db_token = VerificationToken(
         token=token,
         user_id=db_user.id,
@@ -521,11 +559,20 @@ def resend_verification_email(
     # 4. Prepare verification link
     verify_url = f"https://aquasense-backend-jsa5.onrender.com/api/v1/auth/verify?token={token}"
 
-    # 5. Send email in background
-    background_tasks.add_task(send_verification_email, db_user.email, token,
-                              f"{db_user.first_name} {db_user.last_name}")
+    # 5. Send email in background (ensure this function is not async)
+    background_tasks.add_task(
+        send_verification_email,
+        db_user.email,
+        token,
+        f"{db_user.first_name} {db_user.last_name}"
+    )
 
-    return {"message": "Verification email resent successfully",token:token,  "user": UserOut.from_orm(db_user) }
+    # ✅ Proper return JSON
+    return {
+        "message": "Verification email resent successfully",
+        "token": token,
+        "user": UserOut.from_orm(db_user)
+    }
 
 
 
