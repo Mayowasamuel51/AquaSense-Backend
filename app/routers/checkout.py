@@ -366,13 +366,14 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
     delivery_info = None
     if delivery:
         delivery_info = {
-            "recipient_name": delivery.recipient_name,
-            "phone_number": delivery.phone_number,
-            "address": delivery.address,
-            "city": delivery.city,
-            "state": delivery.state,
-            "postal_code": delivery.postal_code,
-            "delivery_instructions": delivery.delivery_instructions,
+            "first_name": delivery_address.first_name,
+            "last_name": delivery_address.last_name,
+            "delivery_address": delivery_address.delivery_address,
+            "phone_number": delivery_address.phone_number,
+            "additional_number": delivery_address.additional_number,
+            "city": delivery_address.city,
+            "state": delivery_address.state,
+            "postal_code": delivery_address.postal_code,
         }
 
     # ✅ Prepare full JSON response
