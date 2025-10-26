@@ -391,136 +391,136 @@ def verify_payment(reference: str, db: Session = Depends(get_db)):
         },
         "data": data,
     }
-
-@router.get("/paystack/callback")
-def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
-    """
-    ✅ Callback URL that Paystack redirects to after payment.
-    This verifies the transaction, updates the order, and includes vendor info.
-    """
-    verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
-    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    res = requests.get(verify_url, headers=headers)
-    data = res.json()
-
-    # 🧾 Find matching order
-    order = db.query(Order).filter(Order.payment_reference == reference).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    # 📊 Extract key Paystack data
-    status = data.get("data", {}).get("status", "failed")
-    amount_paid = data.get("data", {}).get("amount", 0) / 100
-    channel = data.get("data", {}).get("channel", "unknown")
-    gateway_response = data.get("data", {}).get("gateway_response", "")
-    currency = data.get("data", {}).get("currency", "NGN")
-
-    # ✅ Update order status
-    if status == "success":
-        order.status = "paid"
-    elif status == "failed":
-        order.status = "failed"
-    else:
-        order.status = "pending"
-
-    db.commit()
-
-    # 🛒 Fetch related items and vendor info
-    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
-    item_details = []
-
-    for item in items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
-        vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
-
-        item_details.append({
-            "product": {
-                "id": product.id if product else None,
-                "name": product.title if product else "Unknown Product",
-                "price": item.price,
-            },
-            "vendor": {
-                "id": vendor.id if vendor else None,
-                "first_name": vendor.first_name if vendor else None,
-                "last_name": vendor.last_name if vendor else None,
-                "email": vendor.email if vendor else None,
-                "phone": vendor.phone if vendor else None,
-                "profilepicture": vendor.profilepicture if vendor else None,
-                "pick_up_station_address": vendor.pick_up_station_address if vendor else None,
-                "opening_hour":vendor.opening_hour if vendor else None,
-            },
-            "quantity": item.quantity,
-            "subtotal": item.subtotal,
-        })
-
-    # 📦 Delivery details (if present)
-    delivery = order.delivery_address
-    delivery_info = None
-    if delivery:
-        delivery_info = {
-            "first_name": delivery.first_name,
-            "last_name": delivery.last_name,
-            "delivery_address": delivery.delivery_address,
-            "phone_number": delivery.phone_number,
-            "additional_number": delivery.additional_number,
-            "city": delivery.city,
-            "state": delivery.state,
-            "postal_code": delivery.postal_code,
-        }
-
-    # ✅ Prepare full JSON response
-    response_data = {
-        "success": True,
-        "message": "Payment verification completed",
-        "payment_status": status,
-        "order": {
-            "id": order.id,
-            "total_amount": order.total_amount,
-            "status": order.status,
-            "payment_reference": order.payment_reference,
-            "delivery_address": delivery_info,
-            "items": item_details,
-        },
-        "paystack": {
-            "amount_paid": amount_paid,
-            "channel": channel,
-            "currency": currency,
-            "gateway_response": gateway_response,
-        },
-    }
-
-    # 🖥️ HTML Response (for browser callback)
-    accept_header = request.headers.get("accept", "")
-    if "text/html" in accept_header:
-        vendor_names = ", ".join([
-            f"{i['vendor']['first_name']} {i['vendor']['last_name']}".strip()
-            for i in item_details if i["vendor"]["first_name"]
-        ]) or "Unknown Vendor"
-
-        html = f"""
-        <html>
-          <head><title>Payment {status.title()}</title></head>
-          <body style="text-align:center; font-family: Arial; margin-top:50px;">
-            <h2>Payment Status:
-                <span style="color:{'green' if status == 'success' else 'red'}">
-                    {status.upper()}
-                </span>
-            </h2>
-            <p><b>Reference:</b> {reference}</p>
-            <p><b>Amount Paid:</b> ₦{amount_paid:,.2f}</p>
-            <p><b>Payment Method:</b> {channel}</p>
-            <p><b>Vendors:</b> {vendor_names}</p>
-            <p><b>Gateway Response:</b> {gateway_response}</p>
-            <hr>
-            {"<p><b>Delivery:</b> " + delivery_info['address'] + ", " + delivery_info['city'] + "</p>" if delivery_info else ""}
-            <p>Thank you for shopping with us!</p>
-          </body>
-        </html>
-        """
-        return HTMLResponse(content=html)
-
-    # 🧾 JSON for API clients
-    return JSONResponse(content=response_data)
+#
+# @router.get("/paystack/callback")
+# def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
+#     """
+#     ✅ Callback URL that Paystack redirects to after payment.
+#     This verifies the transaction, updates the order, and includes vendor info.
+#     """
+#     verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+#     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+#     res = requests.get(verify_url, headers=headers)
+#     data = res.json()
+#
+#     # 🧾 Find matching order
+#     order = db.query(Order).filter(Order.payment_reference == reference).first()
+#     if not order:
+#         raise HTTPException(status_code=404, detail="Order not found")
+#
+#     # 📊 Extract key Paystack data
+#     status = data.get("data", {}).get("status", "failed")
+#     amount_paid = data.get("data", {}).get("amount", 0) / 100
+#     channel = data.get("data", {}).get("channel", "unknown")
+#     gateway_response = data.get("data", {}).get("gateway_response", "")
+#     currency = data.get("data", {}).get("currency", "NGN")
+#
+#     # ✅ Update order status
+#     if status == "success":
+#         order.status = "paid"
+#     elif status == "failed":
+#         order.status = "failed"
+#     else:
+#         order.status = "pending"
+#
+#     db.commit()
+#
+#     # 🛒 Fetch related items and vendor info
+#     items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+#     item_details = []
+#
+#     for item in items:
+#         product = db.query(Product).filter(Product.id == item.product_id).first()
+#         vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
+#
+#         item_details.append({
+#             "product": {
+#                 "id": product.id if product else None,
+#                 "name": product.title if product else "Unknown Product",
+#                 "price": item.price,
+#             },
+#             "vendor": {
+#                 "id": vendor.id if vendor else None,
+#                 "first_name": vendor.first_name if vendor else None,
+#                 "last_name": vendor.last_name if vendor else None,
+#                 "email": vendor.email if vendor else None,
+#                 "phone": vendor.phone if vendor else None,
+#                 "profilepicture": vendor.profilepicture if vendor else None,
+#                 "pick_up_station_address": vendor.pick_up_station_address if vendor else None,
+#                 "opening_hour":vendor.opening_hour if vendor else None,
+#             },
+#             "quantity": item.quantity,
+#             "subtotal": item.subtotal,
+#         })
+#
+#     # 📦 Delivery details (if present)
+#     delivery = order.delivery_address
+#     delivery_info = None
+#     if delivery:
+#         delivery_info = {
+#             "first_name": delivery.first_name,
+#             "last_name": delivery.last_name,
+#             "delivery_address": delivery.delivery_address,
+#             "phone_number": delivery.phone_number,
+#             "additional_number": delivery.additional_number,
+#             "city": delivery.city,
+#             "state": delivery.state,
+#             "postal_code": delivery.postal_code,
+#         }
+#
+#     # ✅ Prepare full JSON response
+#     response_data = {
+#         "success": True,
+#         "message": "Payment verification completed",
+#         "payment_status": status,
+#         "order": {
+#             "id": order.id,
+#             "total_amount": order.total_amount,
+#             "status": order.status,
+#             "payment_reference": order.payment_reference,
+#             "delivery_address": delivery_info,
+#             "items": item_details,
+#         },
+#         "paystack": {
+#             "amount_paid": amount_paid,
+#             "channel": channel,
+#             "currency": currency,
+#             "gateway_response": gateway_response,
+#         },
+#     }
+#
+#     # 🖥️ HTML Response (for browser callback)
+#     accept_header = request.headers.get("accept", "")
+#     if "text/html" in accept_header:
+#         vendor_names = ", ".join([
+#             f"{i['vendor']['first_name']} {i['vendor']['last_name']}".strip()
+#             for i in item_details if i["vendor"]["first_name"]
+#         ]) or "Unknown Vendor"
+#
+#         html = f"""
+#         <html>
+#           <head><title>Payment {status.title()}</title></head>
+#           <body style="text-align:center; font-family: Arial; margin-top:50px;">
+#             <h2>Payment Status:
+#                 <span style="color:{'green' if status == 'success' else 'red'}">
+#                     {status.upper()}
+#                 </span>
+#             </h2>
+#             <p><b>Reference:</b> {reference}</p>
+#             <p><b>Amount Paid:</b> ₦{amount_paid:,.2f}</p>
+#             <p><b>Payment Method:</b> {channel}</p>
+#             <p><b>Vendors:</b> {vendor_names}</p>
+#             <p><b>Gateway Response:</b> {gateway_response}</p>
+#             <hr>
+#             {"<p><b>Delivery:</b> " + delivery_info['address'] + ", " + delivery_info['city'] + "</p>" if delivery_info else ""}
+#             <p>Thank you for shopping with us!</p>
+#           </body>
+#         </html>
+#         """
+#         return HTMLResponse(content=html)
+#
+#     # 🧾 JSON for API clients
+#     return JSONResponse(content=response_data)
 
 
 
@@ -605,6 +605,133 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
 #     # Return JSON for API clients
 #     return JSONResponse(content=response_data)
 #
+
+
+
+@router.get("/paystack/callback")
+def paystack_callback(request: Request, db: Session = Depends(get_db)):
+    """
+    ✅ Paystack redirect callback after payment.
+    Verifies transaction, updates order, includes vendor + delivery info.
+    """
+    reference = request.query_params.get("reference")
+    if not reference:
+        raise HTTPException(status_code=400, detail="Missing payment reference")
+
+    verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+    res = requests.get(verify_url, headers=headers)
+    data = res.json()
+
+    # 🔍 Find order
+    order = db.query(Order).filter(Order.payment_reference == reference).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # 🔐 Extract payment info
+    payment_data = data.get("data", {})
+    status = payment_data.get("status", "failed")
+    amount_paid = payment_data.get("amount", 0) / 100
+    channel = payment_data.get("channel", "unknown")
+    gateway_response = payment_data.get("gateway_response", "")
+    currency = payment_data.get("currency", "NGN")
+
+    # ✅ Update order status
+    order.status = "paid" if status == "success" else "failed"
+    db.commit()
+
+    # 🛒 Get items + vendor info
+    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+    item_details = []
+    for item in items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
+
+        item_details.append({
+            "product": {
+                "id": product.id if product else None,
+                "name": product.title if product else "Unknown Product",
+                "price": item.price,
+            },
+            "vendor": {
+                "id": vendor.id if vendor else None,
+                "first_name": vendor.first_name if vendor else None,
+                "last_name": vendor.last_name if vendor else None,
+                "email": vendor.email if vendor else None,
+                "phone": vendor.phone if vendor else None,
+                "profilepicture": vendor.profilepicture if vendor else None,
+            },
+            "quantity": item.quantity,
+            "subtotal": item.subtotal,
+        })
+
+    # 🚚 Delivery info
+    delivery = order.delivery_address
+    delivery_info = None
+    if delivery:
+        delivery_info = {
+            "recipient_name": delivery.recipient_name,
+            "phone_number": delivery.phone_number,
+            "address": delivery.address,
+            "city": delivery.city,
+            "state": delivery.state,
+            "postal_code": delivery.postal_code,
+            "delivery_instructions": delivery.delivery_instructions,
+        }
+
+    # 🧾 Response data
+    response_data = {
+        "success": True,
+        "message": "Payment verification completed",
+        "payment_status": status,
+        "order": {
+            "id": order.id,
+            "total_amount": order.total_amount,
+            "status": order.status,
+            "payment_reference": order.payment_reference,
+            "delivery_address": delivery_info,
+            "items": item_details,
+        },
+        "paystack": {
+            "amount_paid": amount_paid,
+            "channel": channel,
+            "currency": currency,
+            "gateway_response": gateway_response,
+        },
+    }
+
+    # 🖥️ HTML version for browser callback
+    accept_header = request.headers.get("accept", "")
+    if "text/html" in accept_header:
+        vendor_names = ", ".join([
+            f"{i['vendor']['first_name']} {i['vendor']['last_name']}".strip()
+            for i in item_details if i["vendor"]["first_name"]
+        ]) or "Unknown Vendor"
+
+        html = f"""
+        <html>
+          <head><title>Payment {status.title()}</title></head>
+          <body style="text-align:center; font-family: Arial; margin-top:50px;">
+            <h2>Payment Status:
+                <span style="color:{'green' if status == 'success' else 'red'}">
+                    {status.upper()}
+                </span>
+            </h2>
+            <p><b>Reference:</b> {reference}</p>
+            <p><b>Amount Paid:</b> ₦{amount_paid:,.2f}</p>
+            <p><b>Payment Method:</b> {channel}</p>
+            <p><b>Vendors:</b> {vendor_names}</p>
+            <p><b>Gateway Response:</b> {gateway_response}</p>
+            {"<hr><p><b>Delivery:</b> " + delivery_info['address'] + ", " + delivery_info['city'] + "</p>" if delivery_info else ""}
+            <p>Thank you for shopping with us!</p>
+          </body>
+        </html>
+        """
+        return HTMLResponse(content=html)
+
+    return JSONResponse(content=response_data)
+
+
 @router.post("/webhook")
 async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
     """
