@@ -790,10 +790,11 @@ def get_my_orders(
 ):
     """
     Fetch all orders made by the currently authenticated user,
-    including their order items and delivery details.
+    including their order items, vendors, and delivery details.
     """
     user_id = current_user.id
 
+    # 🔍 Fetch all orders for the logged-in user
     orders = (
         db.query(Order)
         .filter(Order.user_id == user_id)
@@ -807,10 +808,10 @@ def get_my_orders(
     all_orders = []
 
     for order in orders:
-        # 🛒 Fetch items for this order
+        # 🛒 Fetch order items
         items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
-
         order_items = []
+
         for item in items:
             product = db.query(Product).filter(Product.id == item.product_id).first()
             vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
@@ -822,7 +823,8 @@ def get_my_orders(
                 },
                 "vendor": {
                     "id": vendor.id if vendor else None,
-                    "name": f"{vendor.first_name or ''} {vendor.last_name or ''}".strip() if vendor else "Unknown Vendor",
+                    "name": f"{vendor.first_name or ''} {vendor.last_name or ''}".strip()
+                    if vendor else "Unknown Vendor",
                 },
                 "quantity": item.quantity,
                 "price": item.price,
@@ -830,7 +832,7 @@ def get_my_orders(
                 "subtotal": item.subtotal,
             })
 
-        # 📦 Include delivery address info
+        # 🚚 Include delivery info (if any)
         delivery = order.delivery_address
         delivery_info = None
         if delivery:
@@ -839,6 +841,7 @@ def get_my_orders(
                 "first_name": delivery.first_name,
                 "last_name": delivery.last_name,
                 "delivery_address": delivery.delivery_address,
+                "address": delivery.address,
                 "phone_number": delivery.phone_number,
                 "additional_number": delivery.additional_number,
                 "city": delivery.city,
@@ -847,14 +850,12 @@ def get_my_orders(
                 "created_at": delivery.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             }
 
-        # 🧾 Assemble full order data
-
-        farmer_info = UserOutForProduct.from_orm(current_user)
+        # 🧾 Build order response
         order_data = {
             "id": order.id,
             "total_amount": order.total_amount,
             "status": order.status,
-            "reference": order.payment_reference,
+            "payment_reference": order.payment_reference,
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "delivery_address": delivery_info,
             "items": order_items,
@@ -862,19 +863,104 @@ def get_my_orders(
 
         all_orders.append(order_data)
 
+    # 👤 Include user info in response
+    farmer_info = UserOutForProduct.from_orm(current_user)
+
     return {
         "success": True,
         "message": "User orders retrieved successfully",
-        # "user": {
-        #     "id": current_user.id,
-        #     "first_name": current_user.first_name,
-        #     "last_name": current_user.last_name,
-        #     "email": current_user.email,
-        # },
-        "user":farmer_info,
+        "user": farmer_info,
         "total_orders": len(all_orders),
         "orders": all_orders,
     }
+
+#
+# @router.get("/my-orders", summary="Get all orders for the logged-in user")
+# def get_my_orders(
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     """
+#     Fetch all orders made by the currently authenticated user,
+#     including their order items and delivery details.
+#     """
+#     user_id = current_user.id
+#
+#     orders = (
+#         db.query(Order)
+#         .filter(Order.user_id == user_id)
+#         .order_by(Order.id.desc())
+#         .all()
+#     )
+#
+#     if not orders:
+#         raise HTTPException(status_code=404, detail="No orders found for this user")
+#
+#     all_orders = []
+#
+#     for order in orders:
+#         # 🛒 Fetch items for this order
+#         items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+#
+#         order_items = []
+#         for item in items:
+#             product = db.query(Product).filter(Product.id == item.product_id).first()
+#             vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
+#
+#             order_items.append({
+#                 "product": {
+#                     "id": product.id if product else None,
+#                     "name": product.title if product else "Unknown Product",
+#                 },
+#                 "vendor": {
+#                     "id": vendor.id if vendor else None,
+#                     "name": f"{vendor.first_name or ''} {vendor.last_name or ''}".strip() if vendor else "Unknown Vendor",
+#                 },
+#                 "quantity": item.quantity,
+#                 "price": item.price,
+#                 "discount_price": item.discount_price,
+#                 "subtotal": item.subtotal,
+#             })
+#
+#         # 📦 Include delivery address info
+#         delivery = order.delivery_address
+#         delivery_info = None
+#         if delivery:
+#             delivery_info = {
+#                 "id": delivery.id,
+#                 "first_name": delivery.first_name,
+#                 "last_name": delivery.last_name,
+#                 "delivery_address": delivery.delivery_address,
+#                 "phone_number": delivery.phone_number,
+#                 "additional_number": delivery.additional_number,
+#                 "city": delivery.city,
+#                 "state": delivery.state,
+#                 "postal_code": delivery.postal_code,
+#                 "created_at": delivery.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+#             }
+#
+#         # 🧾 Assemble full order data
+#
+#         farmer_info = UserOutForProduct.from_orm(current_user)
+#         order_data = {
+#             "id": order.id,
+#             "total_amount": order.total_amount,
+#             "status": order.status,
+#             "reference": order.payment_reference,
+#             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+#             "delivery_address": delivery_info,
+#             "items": order_items,
+#         }
+#
+#         all_orders.append(order_data)
+#
+#     return {
+#         "success": True,
+#         "message": "User orders retrieved successfully",
+#         "user": farmer_info,
+#         "total_orders": len(all_orders),
+#         "orders": all_orders,
+#     }
 
 # @router.get("/my-orders", summary="Get all orders for the logged-in user")
 # def get_my_orders(
