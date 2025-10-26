@@ -341,13 +341,16 @@ def verify_payment(reference: str, db: Session = Depends(get_db)):
         delivery_info = None
         if delivery:
             delivery_info = {
-                "recipient_name": delivery.recipient_name,
+
+
+                "first_name": delivery.first_name,
+                "last_name": delivery.last_name,
+                "delivery_address": delivery.delivery_address,
                 "phone_number": delivery.phone_number,
-                "address": delivery.address,
+                "additional_number": delivery.additional_number,
                 "city": delivery.city,
                 "state": delivery.state,
                 "postal_code": delivery.postal_code,
-                "delivery_instructions": delivery.delivery_instructions,
             }
 
         return {
