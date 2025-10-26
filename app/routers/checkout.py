@@ -53,14 +53,15 @@ class CheckoutRequest(BaseModel):
     checkouts: List[CheckoutItem]
 
 class DeliveryInfo(BaseModel):
-    recipient_name: str
+    first_name: str
+    last_name: str
     phone_number: str
-    address: str
+    additional_number: str
+    # address: str
+    delivery_address: str
     city: str
     state: str
-    postal_code: Optional[str] = None
-    delivery_instructions: Optional[str] = None
-
+    postal_code: str | None = None
 
 @router.post("/")
 def initiate_checkout(
