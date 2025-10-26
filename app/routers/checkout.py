@@ -724,7 +724,7 @@ def paystack_callback(request: Request, db: Session = Depends(get_db)):
             <p><b>Payment Method:</b> {channel}</p>
             <p><b>Vendors:</b> {vendor_names}</p>
             <p><b>Gateway Response:</b> {gateway_response}</p>
-            {"<hr><p><b>Delivery:</b> " + delivery_info['address'] + ", " + delivery_info['city'] + "</p>" if delivery_info else ""}
+            {"<hr><p><b>Delivery:</b> " + delivery_info['delivery_address'] + ", " + delivery_info['city'] + "</p>" if delivery_info else ""}
             <p>Thank you for shopping with us!</p>
           </body>
         </html>
