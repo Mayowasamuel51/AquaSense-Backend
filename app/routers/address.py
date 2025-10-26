@@ -9,13 +9,17 @@ router = APIRouter(prefix="/address", tags=["Address"])
 
 # 🧱 Pydantic model for input validation
 class DeliveryAddressCreate(BaseModel):
-    recipient_name: str
-    phone_number: str
-    address: str
+    # recipient_name: str
+    first_name: str
+    last_name:str
+    phone_number:str
+    additional_number:str
+    # address: str
+    delivery_address:str
     city: str
     state: str
     postal_code: str | None = None
-    delivery_instructions: str | None = None
+    # delivery_instructions: str | None = None
 
 
 # 🚀 Route to add new delivery address
@@ -46,13 +50,15 @@ def add_address(
         "message": "Address added successfully",
         "address": {
             "id": new_address.id,
-            "recipient_name": new_address.recipient_name,
+            "first_name":new_address.first_name,
+            "last_name":new_address.last_name,
+            "delivery_address": new_address.delivery_address,
             "phone_number": new_address.phone_number,
-            "address": new_address.address,
+            "additional_number": new_address.additional_number,
             "city": new_address.city,
             "state": new_address.state,
             "postal_code": new_address.postal_code,
-            "delivery_instructions": new_address.delivery_instructions
+            # "delivery_instructions": new_address.delivery_instructions
         }
     }
 
@@ -62,13 +68,23 @@ def add_address(
 
 # 🧱 Pydantic model for creating/updating delivery address
 class DeliveryAddressCreate(BaseModel):
-    recipient_name: str
+    # recipient_name: str
+    # phone_number: str
+    # address: str
+    # city: str
+    # state: str
+    # postal_code: str | None = None
+    # delivery_instructions: str | None = None
+    # recipient_name: str
+    first_name: str
+    last_name: str
     phone_number: str
-    address: str
+    additional_number: str
+    # address: str
+    delivery_address: str
     city: str
     state: str
     postal_code: str | None = None
-    delivery_instructions: str | None = None
 
 
 # 🚀 Update route
@@ -103,14 +119,16 @@ def update_address(
         "success": True,
         "message": "Address updated successfully",
         "address": {
+
             "id": delivery_address.id,
-            "recipient_name": delivery_address.recipient_name,
+            "first_name": delivery_address.first_name,
+            "last_name": delivery_address.last_name,
+            "delivery_address": delivery_address.delivery_address,
             "phone_number": delivery_address.phone_number,
-            "address": delivery_address.address,
+            "additional_number": delivery_address.additional_number,
             "city": delivery_address.city,
             "state": delivery_address.state,
             "postal_code": delivery_address.postal_code,
-            "delivery_instructions": delivery_address.delivery_instructions
         }
 
     }
@@ -139,12 +157,13 @@ def get_address_by_id(
         "message": "Address retrieved successfully",
         "address": {
             "id": address.id,
-            "recipient_name": address.recipient_name,
+            "first_name": address.first_name,
+            "last_name": address.last_name,
+            "delivery_address": address.delivery_address,
             "phone_number": address.phone_number,
-            "address": address.address,
+            "additional_number": address.additional_number,
             "city": address.city,
             "state": address.state,
             "postal_code": address.postal_code,
-            "delivery_instructions": address.delivery_instructions
         }
     }

@@ -207,13 +207,16 @@ class DeliveryAddress(Base):
     __tablename__ = "delivery_addresses"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    recipient_name = Column(String(100), nullable=True)
+    # recipient_name = Column(String(100), nullable=True)
     phone_number = Column(String(50), nullable=True)
+    first_name = Column(String(50), nullable=True)
+    last_name = Column(String(50), nullable=True)
+    additional_number = Column(String(50), nullable=True)
     address = Column(String(255), nullable=True)
     city = Column(String(100), nullable=True)
     state = Column(String(100), nullable=True)
     postal_code = Column(String(20), nullable=True)
-    delivery_instructions = Column(String(255), nullable=True)
+    delivery_address = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     # Relationship
     user = relationship("User", back_populates="addresses")

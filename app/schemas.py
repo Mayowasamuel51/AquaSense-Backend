@@ -104,6 +104,17 @@ class UserOut(UserBase):
 
 
 
+class UserOutForProduct(UserBase):
+    id: int
+    # coins:int         # i just add this here for the labs
+    email:str
+    farm: Optional[FarmOut]
+    workers: List[WorkerOut] = []
+    class Config:
+        from_attributes = True
+
+
+
 class LocationUpdate(BaseModel):
     address: Optional[str] = None
     longitude: Optional[str] = None
