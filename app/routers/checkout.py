@@ -16,6 +16,8 @@ from ..dep.security import get_current_user
 from ..config import settings
 from pydantic import BaseModel
 
+from ..schemas import UserOutForProduct
+
 router = APIRouter(prefix="/checkout", tags=["Orders & Payments"])
 #
 # # ==============================
@@ -78,6 +80,8 @@ def initiate_checkout(
         DeliveryAddress.user_id == current_user.id
     ).first()
 
+
+
     if not delivery_address:
         raise HTTPException(
             status_code=404,
@@ -132,6 +136,7 @@ def initiate_checkout(
     paystack_ref = res_data["data"]["reference"]
     new_order.payment_reference = paystack_ref
     db.commit()
+    farmer_info = UserOutForProduct.from_orm(current_user)
 
     # ✅ 5. Return response
     return {
@@ -141,13 +146,14 @@ def initiate_checkout(
         "order_id": new_order.id,
         "delivery_address": {
             "id": delivery_address.id,
-            "recipient_name": delivery_address.recipient_name,
+            "first_name": delivery_address.first_name,
+            "last_name": delivery_address.last_name,
+            "delivery_address": delivery_address.delivery_address,
             "phone_number": delivery_address.phone_number,
-            "address": delivery_address.address,
+            "additional_number": delivery_address.additional_number,
             "city": delivery_address.city,
             "state": delivery_address.state,
             "postal_code": delivery_address.postal_code,
-            "delivery_instructions": delivery_address.delivery_instructions,
         },
         "user": {
             "id": current_user.id,
@@ -155,6 +161,8 @@ def initiate_checkout(
             "first_name": current_user.first_name,
             "last_name": current_user.last_name,
         },
+        "farmer_info":farmar_info
+
     }
 # # ==============================
 # # 🛒 INITIATE CHECKOUT
