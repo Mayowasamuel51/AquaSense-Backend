@@ -670,6 +670,7 @@ def paystack_callback(request: Request, db: Session = Depends(get_db)):
     delivery_info = None
     if delivery:
         delivery_info = {
+            "id": delivery.id,
             "first_name": delivery.first_name,
             "last_name": delivery.last_name,
             "delivery_address": delivery.delivery_address,
