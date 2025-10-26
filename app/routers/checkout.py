@@ -161,7 +161,7 @@ def initiate_checkout(
             "first_name": current_user.first_name,
             "last_name": current_user.last_name,
         },
-        "farmer_info":farmar_info
+        "farmer_info":farmer_info
 
     }
 # # ==============================
