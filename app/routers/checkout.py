@@ -259,46 +259,135 @@ def initiate_checkout(
 # # ==============================
 # # 🔍 VERIFY PAYMENT
 # # ==============================
+
+
+# @router.get("/verify/{reference}")
+# def verify_payment(reference: str, db: Session = Depends(get_db)):
+#     """
+#     Verify Paystack transaction and update order status.
+#     """
+#     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+#     verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+#
+#     response = requests.get(verify_url, headers=headers)
+#     res_data = response.json()
+#
+#     if not res_data.get("status"):
+#         raise HTTPException(
+#             status_code=400,
+#             detail=res_data.get("message", "Unable to verify payment"),
+#         )
+#
+#     data = res_data.get("data", {})
+#     payment_status = data.get("status")
+#
+#     # 🔍 Find the order by Paystack reference
+#     order = db.query(Order).filter(Order.payment_reference == reference).first()
+#     if not order:
+#         raise HTTPException(status_code=404, detail="Transaction reference not found.")
+#
+#     # ✅ Update status
+#     if payment_status == "success":
+#         order.status = "paid"
+#     else:
+#         order.status = "failed"
+#
+#     db.commit()
+#
+#     return {
+#         "status": True,
+#         "message": "Payment verification complete",
+#         "order_status": order.status,
+#         "reference": reference,
+#     }
+
+
 @router.get("/verify/{reference}")
 def verify_payment(reference: str, db: Session = Depends(get_db)):
     """
-    Verify Paystack transaction and update order status.
+    ✅ Verify Paystack transaction for an order and update payment status.
+    Mirrors the lab verification structure for consistency.
     """
-    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
     verify_url = f"{PAYSTACK_BASE_URL}/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
 
-    response = requests.get(verify_url, headers=headers)
-    res_data = response.json()
+    res = requests.get(verify_url, headers=headers)
+    data = res.json()
 
-    if not res_data.get("status"):
-        raise HTTPException(
-            status_code=400,
-            detail=res_data.get("message", "Unable to verify payment"),
-        )
-
-    data = res_data.get("data", {})
-    payment_status = data.get("status")
-
-    # 🔍 Find the order by Paystack reference
+    # 🧾 Find the order by Paystack reference
     order = db.query(Order).filter(Order.payment_reference == reference).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Transaction reference not found.")
+        raise HTTPException(status_code=404, detail="Order not found")
 
-    # ✅ Update status
-    if payment_status == "success":
+    # 🧩 Extract Paystack response data
+    payment_data = data.get("data", {})
+    payment_status = payment_data.get("status", "failed")
+
+    if data.get("status") and payment_status == "success":
         order.status = "paid"
-    else:
-        order.status = "failed"
+        db.commit()
 
+        # 👤 Get user info
+        user = db.query(User).filter(User.id == order.user_id).first()
+
+        # 💳 Payment details
+        paid_amount = payment_data.get("amount", 0) / 100  # Kobo → Naira
+        payment_method = payment_data.get("channel", "unknown")
+        currency = payment_data.get("currency", "NGN")
+        gateway_response = payment_data.get("gateway_response", "")
+
+        # 📦 Delivery info
+        delivery = order.delivery_address
+        delivery_info = None
+        if delivery:
+            delivery_info = {
+                "recipient_name": delivery.recipient_name,
+                "phone_number": delivery.phone_number,
+                "address": delivery.address,
+                "city": delivery.city,
+                "state": delivery.state,
+                "postal_code": delivery.postal_code,
+                "delivery_instructions": delivery.delivery_instructions,
+            }
+
+        return {
+            "message": "Payment successful",
+            "order": {
+                "id": order.id,
+                "total_amount": order.total_amount,
+                "payment_status": order.status,  # mirrors labs.payment_status
+                "payment_method": payment_method,
+                "transaction_reference": order.payment_reference,
+                "delivery_address": delivery_info,
+            },
+            "user": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+            },
+            "paystack": {
+                "paid_amount": paid_amount,
+                "gateway_response": gateway_response,
+                "channel": payment_method,
+                "currency": currency,
+            },
+        }
+
+    # ❌ Payment failed
+    order.status = "failed"
     db.commit()
 
     return {
-        "status": True,
-        "message": "Payment verification complete",
-        "order_status": order.status,
-        "reference": reference,
+        "message": "Payment failed",
+        "order": {
+            "id": order.id,
+            "total_amount": order.total_amount,
+            "payment_status": order.status,
+            "transaction_reference": order.payment_reference,
+        },
+        "data": data,
     }
-
 
 @router.get("/paystack/callback")
 def paystack_callback(reference: str, request: Request, db: Session = Depends(get_db)):
@@ -366,14 +455,6 @@ def paystack_callback(reference: str, request: Request, db: Session = Depends(ge
     delivery_info = None
     if delivery:
         delivery_info = {
-            "recipient_name": delivery.recipient_name,
-            "phone_number": delivery.phone_number,
-            "address": delivery.address,
-            "city": delivery.city,
-            "state": delivery.state,
-            "postal_code": delivery.postal_code,
-            "delivery_instructions": delivery.delivery_instructions,
-
             "first_name": delivery.first_name,
             "last_name": delivery.last_name,
             "delivery_address": delivery.delivery_address,
