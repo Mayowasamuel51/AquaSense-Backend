@@ -836,17 +836,20 @@ def get_my_orders(
         if delivery:
             delivery_info = {
                 "id": delivery.id,
-                "recipient_name": delivery.recipient_name,
+                "first_name": delivery.first_name,
+                "last_name": delivery.last_name,
+                "delivery_address": delivery.delivery_address,
                 "phone_number": delivery.phone_number,
-                "address": delivery.address,
+                "additional_number": delivery.additional_number,
                 "city": delivery.city,
                 "state": delivery.state,
                 "postal_code": delivery.postal_code,
-                "delivery_instructions": delivery.delivery_instructions,
                 "created_at": delivery.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             }
 
         # 🧾 Assemble full order data
+
+        farmer_info = UserOutForProduct.from_orm(current_user)
         order_data = {
             "id": order.id,
             "total_amount": order.total_amount,
@@ -862,12 +865,13 @@ def get_my_orders(
     return {
         "success": True,
         "message": "User orders retrieved successfully",
-        "user": {
-            "id": current_user.id,
-            "first_name": current_user.first_name,
-            "last_name": current_user.last_name,
-            "email": current_user.email,
-        },
+        # "user": {
+        #     "id": current_user.id,
+        #     "first_name": current_user.first_name,
+        #     "last_name": current_user.last_name,
+        #     "email": current_user.email,
+        # },
+        "user":farmer_info,
         "total_orders": len(all_orders),
         "orders": all_orders,
     }
