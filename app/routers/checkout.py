@@ -783,96 +783,87 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/my-orders", summary="Get all orders for the logged-in user")
+@router.get("/my-orders", summary="Get all orders for the logged-in user (mobile optimized)")
 def get_my_orders(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=50, description="Orders per page")
 ):
     """
-    Fetch all orders made by the currently authenticated user,
-    including their order items, vendors, and delivery details.
+    Mobile-friendly paginated list of the user's orders.
+    Includes items, vendor, and delivery info.
     """
     user_id = current_user.id
+    skip = (page - 1) * limit
 
-    # 🔍 Fetch all orders for the logged-in user
+    total_orders = db.query(Order).filter(Order.user_id == user_id).count()
+
     orders = (
         db.query(Order)
         .filter(Order.user_id == user_id)
         .order_by(Order.id.desc())
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 
-    if not orders:
-        raise HTTPException(status_code=404, detail="No orders found for this user")
-
-    all_orders = []
-
+    order_list = []
     for order in orders:
-        # 🛒 Fetch order items
+        # 🛍 Items
         items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
-        order_items = []
-
+        item_data = []
         for item in items:
             product = db.query(Product).filter(Product.id == item.product_id).first()
             vendor = db.query(Vendor).filter(Vendor.id == item.vendor_id).first()
 
-            order_items.append({
-                "product": {
-                    "id": product.id if product else None,
-                    "name": product.title if product else "Unknown Product",
-                },
-                "vendor": {
-                    "id": vendor.id if vendor else None,
-                    "name": f"{vendor.first_name or ''} {vendor.last_name or ''}".strip()
-                    if vendor else "Unknown Vendor",
-                },
+            item_data.append({
+                "product_id": product.id if product else None,
+                "product_name": product.title if product else "Unknown Product",
+                "vendor_name": f"{vendor.first_name or ''} {vendor.last_name or ''}".strip() if vendor else "Unknown Vendor",
                 "quantity": item.quantity,
                 "price": item.price,
-                "discount_price": item.discount_price,
                 "subtotal": item.subtotal,
             })
 
-        # 🚚 Include delivery info (if any)
+        # 🚚 Delivery Info
         delivery = order.delivery_address
-        delivery_info = None
+        delivery_data = None
         if delivery:
-            delivery_info = {
-                "id": delivery.id,
+            delivery_data = {
                 "first_name": delivery.first_name,
                 "last_name": delivery.last_name,
-                "delivery_address": delivery.delivery_address,
-                "address": delivery.address,
-                "phone_number": delivery.phone_number,
-                "additional_number": delivery.additional_number,
+                "address": delivery.address or delivery.delivery_address,
                 "city": delivery.city,
                 "state": delivery.state,
                 "postal_code": delivery.postal_code,
-                "created_at": delivery.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "phone_number": delivery.phone_number,
             }
 
-        # 🧾 Build order response
-        order_data = {
+        # 📦 Order Info
+        order_list.append({
             "id": order.id,
-            "total_amount": order.total_amount,
             "status": order.status,
-            "payment_reference": order.payment_reference,
+            "total": order.total_amount,
+            "reference": order.payment_reference,
             "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "delivery_address": delivery_info,
-            "items": order_items,
-        }
+            "delivery": delivery_data,
+            "items": item_data
+        })
 
-        all_orders.append(order_data)
-
-    # 👤 Include user info in response
-    farmer_info = UserOutForProduct.from_orm(current_user)
+    # 🧭 Pagination Metadata (compact)
+    has_next = (skip + limit) < total_orders
 
     return {
         "success": True,
-        "message": "User orders retrieved successfully",
-        "user": farmer_info,
-        "total_orders": len(all_orders),
-        "orders": all_orders,
+        "message": "Orders fetched successfully",
+        "page": page,
+        "limit": limit,
+        "has_next": has_next,
+        "total_orders": total_orders,
+        "orders": order_list,
     }
+
 
 #
 # @router.get("/my-orders", summary="Get all orders for the logged-in user")
