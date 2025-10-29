@@ -80,8 +80,8 @@ class FarmOut(FarmBase):
 
 class UserBase(BaseModel):
     email: EmailStr
+    user_cluster_name:Optional[str] = None
     phone: Optional[str] = None
-
     profilepicture: Optional[str] = None
     nin: Optional[str] = None
     kyc_status: str = "unverified"
@@ -97,6 +97,7 @@ class UserOut(UserBase):
     id: int
     coins:int         # i just add this here for the labs
     email:str
+    # cluster_name:str
     farm: Optional[FarmOut]
     workers: List[WorkerOut] = []
     class Config:

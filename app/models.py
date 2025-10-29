@@ -1,6 +1,7 @@
 from numbers import Integral
 
-from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, Numeric, Date, Text, Float
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, Numeric, Date, Text, Float, \
+    UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
 import uuid
@@ -83,6 +84,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False)
     phone = Column(String(50), nullable=True)
+    user_cluster_name = Column(String(50), nullable=True)
     profilepicture = Column(String(255), nullable=True )
     nin = Column(String(50), nullable=True)
 
@@ -129,6 +131,42 @@ class User(Base):
     addresses = relationship("DeliveryAddress", back_populates="user", cascade="all, delete-orphan")
     # ✅ Relationship to Orders
     orders = relationship("Order", back_populates="user")
+
+    # cluster_id = Column(Integer, ForeignKey("clusters.id"), nullable=True)
+    # cluster = relationship("Cluster", back_populates="farmers")
+
+class Cluster(Base):
+    __tablename__ = "clusters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    location = Column(String(100), nullable=False)
+    farmer_count = Column(Integer, default=0)
+
+    # Relationship to members
+    farmers = relationship("ClusterFarmer", back_populates="cluster", cascade="all, delete-orphan")
+
+class ClusterFarmer(Base):
+    __tablename__ = "cluster_farmers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cluster_id = Column(Integer, ForeignKey("clusters.id"))
+    farmer_name = Column(String(100), nullable=False)
+    farmer_email = Column(String(255), nullable=False)
+
+    cluster = relationship("Cluster", back_populates="farmers")
+
+    __table_args__ = (
+        UniqueConstraint('cluster_id', 'farmer_email', name='uq_cluster_farmer'),
+    )
+# class Cluster(Base):
+#     __tablename__ = "clusters"
+#     id = Column(Integer, primary_key=True, index=True)
+#     name = Column(String(100), nullable=False)  # e.g. "Ikeja Cluster 1"
+#     location = Column(String(100), nullable=False)
+#     farmer_count = Column(Integer, default=0)
+#     # relationship
+#     # farmers = relationship("User", back_populates="cluster")
 
 class Vendor(Base):
     __tablename__ = "vendor"

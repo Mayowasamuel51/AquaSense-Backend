@@ -263,6 +263,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     password: str
+    user_cluster_name:Optional[str] = None
     access : Optional[str] = None
 
 
@@ -359,6 +360,7 @@ def verify_email(
         "data": {
             "id": user.id,
             "email": user.email,
+            "user_cluster_name":user.user_cluster_name,
             "first_name": user.first_name,
             "last_name": user.last_name,
             "phone": user.phone,
