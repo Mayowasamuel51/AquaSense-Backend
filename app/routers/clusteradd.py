@@ -4,9 +4,7 @@ from ..models import Cluster, User, ClusterFarmer
 from fastapi import APIRouter, Depends, HTTPException, Request, Query , status
 from ..database import get_db
 from sqlalchemy import func
-
 router = APIRouter(prefix="/cluster", tags=["creating a cluster "])
-
 # ✅ Request Schema
 # ✅ Pydantic schema
 class ClusterCreate(BaseModel):
@@ -114,8 +112,6 @@ def get_farmers_by_cluster(cluster_name: str, db: Session = Depends(get_db)):
         ]
     }
 
-
-
 @router.get("/all")
 def get_all_clusters_with_farmers(db: Session = Depends(get_db)):
     # ✅ Step 1: Get all clusters
@@ -211,6 +207,8 @@ def move_farmer(payload: MoveFarmerRequest, db: Session = Depends(get_db)):
         "from_cluster_count": from_cluster.farmer_count,
         "to_cluster_count": to_cluster.farmer_count
     }
+
+
 
 
 # def create_cluster(payload: ClusterCreate, db: Session = Depends(get_db)):
