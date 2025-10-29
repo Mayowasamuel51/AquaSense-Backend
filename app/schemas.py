@@ -80,7 +80,7 @@ class FarmOut(FarmBase):
 
 class UserBase(BaseModel):
     email: EmailStr
-    user_cluster_name:Optional[str] = None
+    # user_cluster_name:Optional[str] = None
     phone: Optional[str] = None
     profilepicture: Optional[str] = None
     nin: Optional[str] = None
