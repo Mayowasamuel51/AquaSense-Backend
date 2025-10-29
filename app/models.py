@@ -618,6 +618,32 @@ class Stocking(Base):
     batch = relationship("Batch", back_populates="stockings")
     unit = relationship("Unit", back_populates="stockings")
 
+
+
+class Admin(Base):
+    __tablename__ = "admins"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(512), nullable=False)
+    full_name = Column(String(255), nullable=True)
+    is_super = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AdminOTP(Base):
+    __tablename__ = "admin_otps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), nullable=True)
+    email = Column(String(255), nullable=False, index=True)
+    otp_hash = Column(String(512), nullable=False)
+    purpose = Column(String(50), default="password_reset")  # e.g., password_reset
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    admin = relationship("Admin", backref="otps")
+
+
 # class Product(Base):
 #     __tablename__ = "products"
 #     id = Column(Integer, primary_key=True, index=True, autoincrement=True)

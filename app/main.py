@@ -14,7 +14,7 @@ from .routers import(contact, health, auth, myfarm, profileupdate, learning , qu
                      # categories,
                      batch, units, vendor_product, vetsupport, paystack, address,
                      # products,
-                     dailyrecords, feeds, waitlist, income, stocking, labs, agent, checkout,test , userimage , clusteradd)
+                     dailyrecords, feeds, waitlist, income, stocking, labs, agent, checkout,test , userimage ,admin, clusteradd)
 # expenses , profileupdate, myfarm, ponds)   # 👈 import your auth router
 from .database import engine
 from . import models
@@ -203,4 +203,5 @@ app.include_router(userimage.router,prefix="/api/v1" )
 app.include_router(vetsupport.router,prefix="/api/v1" )
 app.include_router(paystack.router,prefix="/api/v1" )
 app.include_router(clusteradd.router,prefix="/api/v1" )
+app.include_router(admin.router,prefix="/api/v1" )
 # app.run_server(debug=True, port=8050, host='0.0.0.0')
