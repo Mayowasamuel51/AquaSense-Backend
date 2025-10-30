@@ -588,6 +588,19 @@ def getUser(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return {"message":"showing all farmers", "data":users }
 
+@router.get("/user/{user_id}", response_model=MainShowUser)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {user_id} not found"
+        )
+    return {"message": f"User with id {user_id} found", "data": [user]}
+
+
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
