@@ -577,11 +577,16 @@ def resend_verification_email(
     }
 
 
+class MainShowUser(BaseModel):
+    message: str
+    data:List[UserOut]
 
-@router.get("/allusers", response_model=List[UserOut])
+
+
+@router.get("/allusers", response_model=MainShowUser )
 def getUser(db: Session = Depends(get_db)):
     users = db.query(User).all()
-    return users
+    return {"message":"showing all farmers", "data":users }
 
 class LoginIn(BaseModel):
     email: EmailStr
