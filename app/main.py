@@ -19,15 +19,15 @@ from .routers import(contact,
                      questions,
                      vendor,
                      # categories,
-                     batch,
-                     units,
+                     # batch,
+                     # units,
                      vendor_product,
                      vetsupport,
                      paystack,
                      address,
                      # products,
-                     dailyrecords,
-                     feeds, waitlist, income, stocking,
+                     # dailyrecords,
+                     # feeds, waitlist, income, stocking,
                      labs, agent, checkout,test , userimage ,admin, clusteradd)
 # expenses , profileupdate, myfarm, ponds)   # 👈 import your auth router
 from .database import engine
@@ -195,17 +195,17 @@ app.include_router(learning.router, prefix="/api/v1")
 # app.include_router(products.router, prefix="/api/v1")
 app.include_router(profileupdate.router, prefix="/api/v1")
 app.include_router(myfarm.router, prefix="/api/v1")
-app.include_router(batch.router, prefix="/api/v1")
-app.include_router(units.router, prefix="/api/v1")
+# app.include_router(batch.router, prefix="/api/v1")
+# app.include_router(units.router, prefix="/api/v1")
 app.include_router(address.router, prefix="/api/v1")
 # app.include_router(categories.router, prefix="/api/v1")
-app.include_router(dailyrecords.router,prefix="/api/v1")
+# app.include_router(dailyrecords.router,prefix="/api/v1")
 app.include_router(address.router,prefix="/api/v1")
-(app.include_router(feeds.router,prefix="/api/v1" ))
+# (app.include_router(feeds.router,prefix="/api/v1" ))
 app.include_router(contact.router,prefix="/api/v1" )
-app.include_router(waitlist.router,prefix="/api/v1" )
-app.include_router(income.router,prefix="/api/v1" )
-app.include_router(stocking.router,prefix="/api/v1" )
+# app.include_router(waitlist.router,prefix="/api/v1" )
+# app.include_router(income.router,prefix="/api/v1" )
+# app.include_router(stocking.router,prefix="/api/v1" )
 app.include_router(labs.router,prefix="/api/v1" )
 app.include_router(agent.router,prefix="/api/v1" )
 app.include_router(questions.router,prefix="/api/v1" )
