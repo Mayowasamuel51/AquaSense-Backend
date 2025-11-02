@@ -30,9 +30,6 @@ class Wait(Base):
     firstname = Column(String(100), nullable=False)
     email = Column(String(120), nullable=False, index=True)
 
-
-
-
 class Farm(Base):
     __tablename__ = "farms"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -87,14 +84,12 @@ class User(Base):
     user_cluster_name = Column(String(50), nullable=True)
     profilepicture = Column(String(255), nullable=True )
     nin = Column(String(50), nullable=True)
-
     kyc_status = Column(String(50), default="unverified")
     emailverified = Column(Boolean, default=False)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
     gender = Column(String(50), nullable=True)
     coins = Column(Integer, default=0)
-
     # ✅ Progress relationships
     justdata = relationship("JustData", back_populates="user", uselist=False)
     password_hash = Column(String(255), nullable=False)
@@ -106,34 +101,410 @@ class User(Base):
     # ✅ relationships
     video_progress = relationship("UserVideoProgress", backref="user", cascade="all, delete-orphan")
     test_progress = relationship("UserTestProgress", back_populates="user", cascade="all, delete-orphan")
-    # Farming units, batches, and records , feeds,
-    units = relationship("Unit", back_populates="farmer")
-    batches = relationship("Batch", back_populates="farmer")
-    records = relationship("Record", back_populates="farmer")
-    feeds = relationship("Feed", back_populates="farmer")  # <-- 🔥 new one
-    # User model
-    incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
-    stockings = relationship("Stocking", back_populates="farmer")
     # new relationship
     location = relationship("Location", uselist=False, back_populates="user")
     # ✅ add this only once
     # incomes = relationship("Income", back_populates="farmer")
-
     support_tickets = relationship("SupportAgent", back_populates="user", cascade="all, delete-orphan")
     # Reverse relationship to support tickets
     support_ticket = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
-
     # 🧩 Add this line:
     labs = relationship("Labs", back_populates="user",  cascade="all, delete-orphan")
-
     # ✅ Add relationship to VetSupport
     vetsupports = relationship("VetSupport", back_populates="user", cascade="all, delete-orphan")
     addresses = relationship("DeliveryAddress", back_populates="user", cascade="all, delete-orphan")
     # ✅ Relationship to Orders
     orders = relationship("Order", back_populates="user")
+    # cluster_id = Column(Integer, ForeignKey("clusters.id"), nullable=True)  // i will fix  this God abeg
+    # cluster = relationship("Cluster", back_populates="farmers")  // and this too
+    # relationships to farm data
+    units = relationship("Unit", back_populates="farmer", cascade="all, delete-orphan")
+    batches = relationship("Batch", back_populates="farmer", cascade="all, delete-orphan")
+    records = relationship("UnitRecord", back_populates="farmer", cascade="all, delete-orphan")
+    feeds = relationship("Feed", back_populates="farmer", cascade="all, delete-orphan")
+    incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
+    stockings = relationship("Stocking", back_populates="farmer", cascade="all, delete-orphan")
 
-    # cluster_id = Column(Integer, ForeignKey("clusters.id"), nullable=True)
-    # cluster = relationship("Cluster", back_populates="farmers")
+class SyncBase:
+    # client-provided UUID primary key
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    farmer_id = Column(Integer, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
+    is_synced = Column(Boolean, default=False, nullable=False)
+
+
+# ---------------------
+# Unit (pond/cage)
+# ---------------------
+class Unit(Base, SyncBase):
+    __tablename__ = "units"
+
+    unit_name = Column(String(120), nullable=False)
+    unit_type = Column(String(80), nullable=True)
+    unit_dimension = Column(String(120), nullable=True)
+    unit_capacity = Column(Integer, nullable=True)
+    fishes = Column(Integer, default=0)
+    image_url = Column(String(255), nullable=True)
+    image_file = Column(String(255), nullable=True)
+    unit_category = Column(String(80), nullable=True)  # cage / pond
+    is_active = Column(Boolean, default=False)
+
+    # relationships
+    farmer = relationship("User", back_populates="units")
+    # reverse relationships from other models will reference Unit via pond_id/unit_id
+
+
+# ---------------------
+# Batch
+# ---------------------
+class Batch(Base, SyncBase):
+    __tablename__ = "batches"
+
+    batch_name = Column(String(255), nullable=False)
+    fishtype = Column(String(120), nullable=True)
+    is_completed = Column(Boolean, default=False)
+    number_of_fishes = Column(Integer, default=0)
+
+    farmer = relationship("User", back_populates="batches")
+
+
+# ---------------------
+# UnitRecord (per unit per batch)
+# ---------------------
+class UnitRecord(Base, SyncBase):
+    __tablename__ = "unit_records"
+
+    # SyncBase provides: id, farmer_id, created_at, updated_at, is_synced
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=False, index=True)
+    unit_id = Column(String(36), ForeignKey("units.id"), nullable=False, index=True)
+    fishleft = Column(Integer, default=0)
+    stocknumber = Column(Integer, default=0)
+    incomingfish = Column(Integer, default=0)
+    mortality = Column(Integer, default=0)
+    movedfishes = Column(Integer, default=0)
+    fishtype = Column(String(100), nullable=True)
+    stockedon = Column(DateTime, nullable=True)
+    totalfishcost = Column(Float, nullable=True)
+
+    farmer = relationship("User", back_populates="records")
+    batch = relationship("Batch", backref="unit_records")
+    unit = relationship("Unit", backref="unit_records")
+
+
+# ---------------------
+# DailyRecord
+# ---------------------
+class DailyRecord(Base, SyncBase):
+    __tablename__ = "daily_records"
+
+    record_id = Column(String(36), ForeignKey("unit_records.id"), nullable=False, index=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=False, index=True)
+    unit_id = Column(String(36), ForeignKey("units.id"), nullable=False, index=True)
+    date = Column(DateTime, nullable=False)
+    feed_name = Column(String(120), nullable=True)
+    feed_size = Column(String(80), nullable=True)
+    feed_quantity = Column(Float, nullable=False, default=0.0)
+    mortality = Column(Integer, default=0)
+    coins = Column(Float, nullable=True)
+
+    farmer = relationship("User")
+    unit_record = relationship("UnitRecord", backref="daily_records")
+
+
+# ---------------------
+# WeightSampling
+# ---------------------
+class WeightSampling(Base, SyncBase):
+    __tablename__ = "weight_samplings"
+
+    record_id = Column(String(36), ForeignKey("unit_records.id"), nullable=False)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=False)
+    unit_id = Column(String(36), ForeignKey("units.id"), nullable=False)
+    sample_name = Column(String(120), nullable=True)
+    date = Column(DateTime, nullable=False)
+    fish_numbers = Column(Integer, nullable=False)
+    total_weight = Column(Float, nullable=False)
+    completed = Column(Boolean, default=False)
+
+    farmer = relationship("User")
+    unit_record = relationship("UnitRecord", backref="weight_samplings")
+
+
+# ---------------------
+# Grading & Sorting
+# ---------------------
+class GradingAndSorting(Base, SyncBase):
+    __tablename__ = "grading_sortings"
+
+    record_id = Column(String(36), ForeignKey("unit_records.id"), nullable=False)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=False)
+    unit_id = Column(String(36), ForeignKey("units.id"), nullable=False)
+    grade_with = Column(String(120), nullable=True)
+    sample_name = Column(String(120), nullable=True)
+    date = Column(DateTime, nullable=False)
+    grading_pond_number = Column(Integer, nullable=True)
+    fish_numbers = Column(Integer, nullable=True)
+    total_weight = Column(Float, nullable=True)
+    completed = Column(Boolean, default=False)
+
+    farmer = relationship("User")
+    unit_record = relationship("UnitRecord", backref="grading_sortings")
+    grades = relationship("Grade", back_populates="grading", cascade="all, delete-orphan")
+
+
+class Grade(Base):
+    __tablename__ = "grades"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    sorting_id = Column(String(36), ForeignKey("grading_sortings.id"), nullable=False, index=True)
+    destination_batch_id = Column(String(36), nullable=True)
+    destination_batch_name = Column(String(255), nullable=True)
+    destination_unit_id = Column(String(36), nullable=True)
+    destination_unit_name = Column(String(255), nullable=True)
+    average_fish_weight = Column(Float, nullable=True)
+    fish_transferred = Column(Integer, nullable=True)
+    sample_name = Column(String(120), nullable=True)
+    record_id = Column(String(36), nullable=True)
+    batch_id = Column(String(36), nullable=True)
+    is_synced = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    grading = relationship("GradingAndSorting", back_populates="grades")
+
+
+# ---------------------
+# Harvest
+# ---------------------
+class Harvest(Base, SyncBase):
+    __tablename__ = "harvests"
+
+    record_id = Column(String(36), ForeignKey("unit_records.id"), nullable=False)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=False)
+    unit_id = Column(String(36), ForeignKey("units.id"), nullable=False)
+    date = Column(DateTime, nullable=False)
+    sales_invoice_number = Column(String(120), nullable=True)
+    quantity_harvest = Column(Integer, nullable=False, default=0)
+    total_weight = Column(Float, nullable=False, default=0.0)
+    price_per_kg = Column(Float, nullable=True)
+    total_sales = Column(Float, nullable=True)
+
+    farmer = relationship("User")
+    unit_record = relationship("UnitRecord", backref="harvests")
+
+
+# ---------------------
+# Financial / Expense models
+# ---------------------
+class Income(Base, SyncBase):
+    __tablename__ = "incomes"
+
+    title = Column(String(120), default="Income")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    income_type = Column(String(120), nullable=True)
+    amount_earned = Column(Float, nullable=True)
+    amount = Column(Float, nullable=False, default=0.0)
+    quantity_sold = Column(Integer, nullable=True)
+    payment_method = Column(String(80), nullable=True)
+    income_date = Column(DateTime, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+
+
+class Stocking(Base, SyncBase):
+    __tablename__ = "stockings"
+
+    title = Column(String(120), default="Stocking")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    fish_type = Column(String(120), nullable=True)
+    quantity_purchased = Column(Integer, nullable=False, default=0)
+    total_amount = Column(Float, nullable=True)
+    date = Column(DateTime, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+
+
+class Feed(Base, SyncBase):
+    __tablename__ = "feeds"
+
+    title = Column(String(120), default="Feed")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    amount = Column(Float, nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    feed_name = Column(String(120), nullable=True)
+    feed_form = Column(String(100), nullable=True)
+    feed_size = Column(String(80), nullable=True)
+    quantity = Column(Integer, nullable=True)
+    unit = Column(String(50), nullable=True)
+    cost_per_unit = Column(Float, nullable=True)
+    total_amount = Column(Float, nullable=True)
+    date = Column(DateTime, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+    batch = relationship("Batch")
+
+
+class Labour(Base, SyncBase):
+    __tablename__ = "labours"
+
+    title = Column(String(120), default="Salary/wages")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    amount = Column(Float, nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    labour_type = Column(String(120), nullable=True)
+    number_of_workers = Column(Integer, nullable=True)
+    total_amount = Column(Float, nullable=True)
+    payment_method = Column(String(80), nullable=True)
+    date = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+
+
+class Medication(Base, SyncBase):
+    __tablename__ = "medications"
+
+    title = Column(String(120), default="Medications")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    amount = Column(Float, nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    medication_name = Column(String(120), nullable=True)
+    quantity = Column(String(120), nullable=True)
+    total_cost = Column(Float, nullable=True)
+    date_paid = Column(DateTime, nullable=True)
+    payment_method = Column(String(80), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+
+
+class Maintenance(Base, SyncBase):
+    __tablename__ = "maintenances"
+
+    title = Column(String(120), default="Farm Maintenance")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    amount = Column(Float, nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    activity_type = Column(String(120), nullable=True)
+    total_cost = Column(Float, nullable=True)
+    date_paid = Column(DateTime, nullable=True)
+    payment_method = Column(String(80), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+
+
+class Logistics(Base, SyncBase):
+    __tablename__ = "logistics"
+
+    title = Column(String(120), default="Logistics")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    amount = Column(Float, nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    activity_type = Column(String(120), nullable=True)
+    total_cost = Column(Float, nullable=True)
+    date_paid = Column(DateTime, nullable=True)
+    payment_method = Column(String(80), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+
+
+class OperationalExpense(Base, SyncBase):
+    __tablename__ = "operational_expenses"
+
+    title = Column(String(120), default="Other Operations")
+    content = Column(Text, nullable=True)
+    icon = Column(String(255), nullable=True)
+    amount = Column(Float, nullable=True)
+    pond_id = Column(String(36), ForeignKey("units.id"), nullable=True)
+    batch_id = Column(String(36), ForeignKey("batches.id"), nullable=True)
+    expense_name = Column(String(120), nullable=True)
+    total_cost = Column(Float, nullable=True)
+    date_paid = Column(DateTime, nullable=True)
+    payment_method = Column(String(80), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    farmer = relationship("User")
+    pond = relationship("Unit")
+
+
+# ---------------------
+# Production Metrics (computed & stored)
+# ---------------------
+class ProductionMetric(Base):
+    __tablename__ = "production_metrics"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    farmer_id = Column(Integer, nullable=False, index=True)
+    batch_id = Column(String(36), nullable=True, index=True)
+    unit_id = Column(String(36), nullable=True, index=True)
+    production_cycle = Column(Integer, nullable=True)
+
+    # raw inputs
+    pond_area_m2 = Column(Float, nullable=True)
+    number_stocked = Column(Integer, nullable=True)
+    number_harvested = Column(Integer, nullable=True)
+    initial_total_biomass_kg = Column(Float, nullable=True)
+    final_total_biomass_kg = Column(Float, nullable=True)
+    total_feed_given_kg = Column(Float, nullable=True)
+    total_feed_cost = Column(Float, nullable=True)
+
+    # computed fields
+    yield_kg_m2 = Column(Float, nullable=True)
+    yield_kg_cycle = Column(Float, nullable=True)
+    survival_rate_pct = Column(Float, nullable=True)
+    mortality_rate_pct = Column(Float, nullable=True)
+    ADG_g_day = Column(Float, nullable=True)
+    SGR_pct_day = Column(Float, nullable=True)
+    FCR = Column(Float, nullable=True)
+    total_weight_gain_kg = Column(Float, nullable=True)
+    feed_cost_per_kg_produced = Column(Float, nullable=True)
+    stocking_density_fish_m2 = Column(Float, nullable=True)
+    total_cost = Column(Float, nullable=True)
+    cost_per_kg = Column(Float, nullable=True)
+    total_revenue = Column(Float, nullable=True)
+    gross_profit = Column(Float, nullable=True)
+    profit_per_kg = Column(Float, nullable=True)
+    gross_margin_pct = Column(Float, nullable=True)
+    ROI_pct = Column(Float, nullable=True)
+
+    computed_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("farmer_id", "batch_id", "unit_id", "production_cycle", name="uq_prodmetric_fbuc"),
+    )
+
+
+
+
+
 
 class Cluster(Base):
     __tablename__ = "clusters"
@@ -214,7 +585,6 @@ class Product(Base):
     vendor = relationship("Vendor", back_populates="products")
     types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
 
-
 class ProductType(Base):
     __tablename__ = "product_types"
     id = Column(Integer, primary_key=True, index=True)
@@ -224,7 +594,6 @@ class ProductType(Base):
     value_price = Column(Float, nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"))
     product = relationship("Product", back_populates="types")
-
 
 class Order(Base):
     __tablename__ = "orders"
@@ -266,7 +635,6 @@ class WebhookLog(Base):
     payload = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-
 class OrderItem(Base):
     __tablename__ = "order_items"
 
@@ -284,8 +652,6 @@ class OrderItem(Base):
     product = relationship("Product")
     vendor = relationship("Vendor")
     type = relationship("ProductType")
-
-
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
@@ -384,292 +750,6 @@ class UserTestProgress(Base):
     test = relationship("Test", back_populates="progresses")
     selected_option = relationship("Option", foreign_keys=[selected_option_id])
 
-class Unit(Base):
-    __tablename__ = "units"
-
-    id = Column(String(50), primary_key=True, index=True)
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    pondName = Column(String(100), nullable=False)
-    pondType = Column(String(50), nullable=False)  # e.g., Earthen, Concrete
-    pondCapacity = Column(Integer, nullable=False)
-    fishes = Column(Integer, nullable=False)
-    imageUrl = Column(String(255))
-    createdAt = Column(DateTime, default=datetime.utcnow)
-    updatedAt = Column(DateTime, default=None)
-    type = Column(String(50))  # e.g., "Cage" or "Pond"
-    isActive = Column(Boolean, default=False)
-    # ✅ Add feeds relationship
-    feeds = relationship("Feed", back_populates="unit")
-    farmer = relationship("User", back_populates="units")
-    records = relationship("Record", back_populates="unit")
-    # Unit model
-
-    incomes = relationship("Income", back_populates="unit")
-    # In Unit
-    stockings = relationship("Stocking", back_populates="unit")
-
-
-class Batch(Base):
-    __tablename__ = "batches"
-    batchId = Column(String(50), primary_key=True, index=True)
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchName = Column(String(100), nullable=False)
-    fishtype = Column(String(100), nullable=False)
-    numberoffishes = Column(String(100), nullable=False)
-    createdAt = Column(DateTime, default=datetime.utcnow)
-    updatedAt = Column(DateTime, default=None)
-    isCompleted = Column(Boolean, default=False)
-    farmer = relationship("User", back_populates="batches")
-    records = relationship("Record", back_populates="batch")
-    # ✅ Add feeds relationship
-    feeds = relationship("Feed", back_populates="batch")
-    # Batch model
-
-    incomes = relationship("Income", back_populates="batch")   # ✅ matches Income.batch
-    # In Batch
-    stockings = relationship("Stocking", back_populates="batch")
-
-
-class Record(Base):
-    __tablename__ = "records"
-
-    id = Column(String(50), primary_key=True, index=True)
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchId = Column(String(50), ForeignKey("batches.batchId"))
-    unitId = Column(String(50), ForeignKey("units.id"))
-
-    createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    unit = relationship("Unit", back_populates="records")
-    batch = relationship("Batch", back_populates="records")
-    farmer = relationship("User", back_populates="records")
-
-    dailyRecords = relationship("DailyRecord", back_populates="record")
-    weightSamplings = relationship("WeightSampling", back_populates="record")
-    gradingAndSortings = relationship("GradingAndSorting", back_populates="record")
-    harvests = relationship("HarvestForm", back_populates="record")
-
-class DailyRecord(Base):
-    __tablename__ = "daily_records"
-
-    id = Column(String(50), primary_key=True, index=True)   # PK UUID
-    recordId = Column(String(50), ForeignKey("records.id")) # FK to records
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchId = Column(String(50), ForeignKey("batches.batchId"))
-    unitId = Column(String(50), ForeignKey("units.id"))
-
-    date = Column(DateTime, nullable=False)
-    feedName = Column(String(100), nullable=False)
-    feedSize = Column(String(50), nullable=False)
-    feedQuantity = Column(Float, nullable=False)
-    mortality = Column(Integer, nullable=False)
-    coins = Column(Integer, default=None)
-
-    createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    # Relationships
-    record = relationship("Record", back_populates="dailyRecords")
-
-class WeightSampling(Base):
-    __tablename__ = "weight_samplings"
-
-    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchId = Column(String(50), ForeignKey("batches.batchId"))
-    unitId = Column(String(50), ForeignKey("units.id"))
-    sampleName = Column(String(100))
-    date = Column(DateTime, nullable=False)
-    fishNumbers = Column(Integer, nullable=False)
-    totalWeight = Column(Float, nullable=False)
-    completed = Column(Boolean, default=False)
-    createdAt = Column(DateTime, default=datetime.utcnow)
-
-    record = relationship("Record", back_populates="weightSamplings")
-
-class Grade(Base):
-    __tablename__ = "grades"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    gradingAndSortingId = Column(String(50), ForeignKey("grading_and_sortings.recordId"))
-    destinationBatchId = Column(String(50), nullable=True)
-    destinationBatchName = Column(String(100), nullable=True)
-    destinationUnitId = Column(String(50), nullable=False)
-    destinationUnitName = Column(String(100), nullable=False)
-    averageFishWeight = Column(Float, nullable=False)
-    fishTransferred = Column(Integer, nullable=False)
-
-class GradingAndSorting(Base):
-    __tablename__ = "grading_and_sortings"
-
-    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchId = Column(String(50), ForeignKey("batches.batchId"))
-    unitId = Column(String(50), ForeignKey("units.id"))
-    gradeWith = Column(String(50))
-    sampleName = Column(String(100))
-    date = Column(DateTime, nullable=False)
-    gradingPondNumber = Column(Integer)
-    fishNumbers = Column(Integer)
-    totalWeight = Column(Float)
-    completed = Column(Boolean, default=False)
-    createdAt = Column(DateTime, default=datetime.utcnow)
-
-    record = relationship("Record", back_populates="gradingAndSortings")
-    grades = relationship("Grade", backref="gradingAndSorting")
-
-class HarvestForm(Base):
-    __tablename__ = "harvests"
-
-    recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchId = Column(String(50), ForeignKey("batches.batchId"))
-    unitId = Column(String(50), ForeignKey("units.id"))
-    date = Column(DateTime, nullable=False)
-    harvestedWeight = Column(Float, nullable=False)
-    harvestedFish = Column(Integer, nullable=False)
-    createdAt = Column(DateTime, default=datetime.utcnow)
-
-    record = relationship("Record", back_populates="harvests")
-
-class Feed(Base):
-    __tablename__ = "feeds"
-
-    id = Column(String(50), primary_key=True, index=True)
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-
-    batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
-    unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
-
-    feedName = Column(String(100), nullable=False)
-    feedForm = Column(String(50), nullable=False)
-    feedSize = Column(String(50), nullable=False)
-    quantity = Column(Integer, nullable=False)
-    # unit = Column(String(50), nullable=False)
-    unitMeasure = Column(String(50), nullable=False)  # ✅ renamed (kg, bags, etc.)
-    costPerUnit = Column(Float, nullable=False)
-    totalAmount = Column(Float, nullable=False)
-    date = Column(DateTime, nullable=False)
-
-    createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    # relationships
-    farmer = relationship("User", back_populates="feeds")
-    batch = relationship("Batch", back_populates="feeds")
-    unit = relationship("Unit", back_populates="feeds")
-
-
-class Income(Base):
-    __tablename__ = "incomes"
-
-    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
-    unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
-    farmId = Column(Integer, ForeignKey("farms.id"), nullable=False)
-
-    incomeType    = Column(String(250), nullable=False)
-    amountEarned= Column(Integer, nullable=False)
-    quantitySold = Column(Integer, nullable=False)
-    paymentMethod =  Column(String(250), nullable=False)
-    incomeDate = Column(DateTime, default=datetime.utcnow)
-    # Optional link to harvest (future-proof)
-    harvestId = Column(String(50), ForeignKey("harvests.recordId"), nullable=True)
-    appliedToPondName = Column(String(100), nullable=True)  # ✅ pond name (unit/pond applied to)
-    createdAt = Column(DateTime, default=datetime.utcnow)
-    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    # farmer = relationship("User", back_populates="incomes")
-    # ✅ Relationships
-
-    farmer = relationship("User", back_populates="incomes")
-    farm = relationship("Farm", back_populates="incomes")
-    batch = relationship("Batch", back_populates="incomes")
-    unit = relationship("Unit", back_populates="incomes")
-
-    # farmer = relationship("User", backref="incomes")
-    # batch = relationship("Batch", backref="incomes")
-    # unit = relationship("Unit", backref="incomes")
-    # harvest = relationship("HarvestForm", backref="incomes", uselist=False)
-
-
-class Stocking(Base):
-    __tablename__ = "stockings"
-
-    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
-    farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
-    unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
-    farmId = Column(Integer, ForeignKey("farms.id"), nullable=False)
-
-    fishType = Column(String(100), nullable=False)            # e.g., Tilapia
-    quantityPurchased = Column(Integer, nullable=False)       # total fingerlings stocked
-    totalAmount = Column(Float, nullable=False)               # purchase cost
-    date = Column(DateTime, default=datetime.utcnow)          # stocking date
-
-    createdAt = Column(DateTime, default=datetime.utcnow)
-    updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    farmer = relationship("User", back_populates="stockings")
-    farm = relationship("Farm", back_populates="stockings")
-    batch = relationship("Batch", back_populates="stockings")
-    unit = relationship("Unit", back_populates="stockings")
-
-
-
-class Admin(Base):
-    __tablename__ = "admins"
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    password_hash = Column(String(512), nullable=False)
-    full_name = Column(String(255), nullable=True)
-    is_super = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class AdminOTP(Base):
-    __tablename__ = "admin_otps"
-
-    id = Column(Integer, primary_key=True, index=True)
-    admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), nullable=True)
-    email = Column(String(255), nullable=False, index=True)
-    otp_hash = Column(String(512), nullable=False)
-    purpose = Column(String(50), default="password_reset")  # e.g., password_reset
-    created_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=False)
-    used = Column(Boolean, default=False)
-    admin = relationship("Admin", backref="otps")
-
-
-# class Product(Base):
-#     __tablename__ = "products"
-#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-#     title = Column(String(250), nullable=False)
-#     description = Column(String(250), nullable=True)
-#     image = Column(String(250), nullable=True)
-#     price = Column(Float, nullable=False)
-#     category = Column(String(250), nullable=False)
-#     featured = Column(Boolean, default=False , nullable=True)
-#     featureexpiredate = Column(Boolean , default=False, nullable=True)
-#     quantity = Column(Integer, default=0)
-#     # relationships
-#
-#     price_range = relationship("PriceRange", uselist=False,  back_populates="product")
-#     types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
-
-# class Category(Base):
-#     __tablename__ = "categories"
-#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-#     name = Column(String(250), unique=True, nullable=False)
-#
-#     # Relationship back to products
-#     products = relationship("Product", back_populates="category_obj")
-
-
-
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -683,39 +763,35 @@ class Transaction(Base):
     items_json = Column(JSON, nullable=True)  # 🆕 store cart items
 
 
-# class Cart(Base):
-#     __tablename__ = "cart"
-#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-#     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-#     type_id = Column(Integer, ForeignKey("product_types.id"), nullable=True)
-#     quantity = Column(Integer, nullable=False)
-#
-#     product = relationship("Product")
-#     selected_type = relationship("ProductType")
-# class Cart(Base):
-#     __tablename__ = "cart"
-#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-#     product_id = Column(Integer, ForeignKey("products.id"))
-#     quantity = Column(Integer, nullable=False)
-#     product = relationship("Product")
+class Labs(Base):
+    __tablename__ = "labs"
 
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    username = Column(String(250), nullable=False)
+    preferred_date = Column(String(250), nullable=False)
+    totalPrice = Column(Float, nullable=False)
+    payment_method = Column(String(50), nullable=True)
+    transaction_reference = Column(String(255), nullable=True)
+    payment_status = Column(String(50), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # 🧩 Relationship to lab tests (categories/tests)
+    tests = relationship("LabTest", back_populates="lab", cascade="all, delete-orphan")
+    # 🧩 Relationship back to User
+    user = relationship("User", back_populates="labs")
 
+class LabTest(Base):
+    __tablename__ = "lab_tests"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+    # ✅ match payload
+    category_title = Column(String(255), nullable=False)  # e.g. "Water Quality Test"
+    test_id = Column(Integer, nullable=False)  # testListAsMap test id
+    test_name = Column(String(255), nullable=False)  # e.g. "pH Level"
+    test_price = Column(Float, nullable=False)
 
-# class Labs(Base):
-#     __tablename__ = "labs"
-#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-#     labtesttorun = Column(String(250), nullable=False)
-#     selectspecfictest = Column(String(250), nullable=True)
-#     date = Column(String(250), nullable=False)
-#     username = Column(String(250), nullable=False)
-#     # Order/payment tracking
-#     status = Column(String(50), default="pending")  # pending, in_progress, completed
-#     payment_status = Column(String(50), default="unpaid")  # unpaid, paid, failed
-#     payment_reference = Column(String(250), nullable=True)  # from Paystack
-#     amount = Column(Integer, nullable=False, default=0)  # cost of test
-#     created_at = Column(DateTime, default=datetime.utcnow)
-#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    lab = relationship("Labs", back_populates="tests")
 class SupportAgent(Base):
     __tablename__ = "supportagent"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -762,7 +838,6 @@ class VetImage(Base):
     # ✅ Relationship back to VetSupport
     vetsupport = relationship("VetSupport", back_populates="images")
 
-
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -785,7 +860,6 @@ class TestCategory(Base):
     # Relationship to test_items table
     tests = relationship("TestItem", back_populates="category", cascade="all, delete-orphan")
 
-
 class TestItem(Base):
     __tablename__ = "test_items"  # 👈 new table name (no conflict)
     id = Column(Integer, primary_key=True, index=True)
@@ -794,6 +868,333 @@ class TestItem(Base):
     category_id = Column(Integer, ForeignKey("test_categories.id"), nullable=False)
     # Link back to category
     category = relationship("TestCategory", back_populates="tests")
+
+class Admin(Base):
+    __tablename__ = "admins"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(512), nullable=False)
+    full_name = Column(String(255), nullable=True)
+    is_super = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class AdminOTP(Base):
+    __tablename__ = "admin_otps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), nullable=True)
+    email = Column(String(255), nullable=False, index=True)
+    otp_hash = Column(String(512), nullable=False)
+    purpose = Column(String(50), default="password_reset")  # e.g., password_reset
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    admin = relationship("Admin", backref="otps")
+
+
+
+
+
+
+
+
+
+
+
+# class Unit(Base):
+#     __tablename__ = "units"
+#
+#     id = Column(String(50), primary_key=True, index=True)
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     pondName = Column(String(100), nullable=False)
+#     pondType = Column(String(50), nullable=False)  # e.g., Earthen, Concrete
+#     pondCapacity = Column(Integer, nullable=False)
+#     fishes = Column(Integer, nullable=False)
+#     imageUrl = Column(String(255))
+#     createdAt = Column(DateTime, default=datetime.utcnow)
+#     updatedAt = Column(DateTime, default=None)
+#     type = Column(String(50))  # e.g., "Cage" or "Pond"
+#     isActive = Column(Boolean, default=False)
+#     # ✅ Add feeds relationship
+#     feeds = relationship("Feed", back_populates="unit")
+#     farmer = relationship("User", back_populates="units")
+#     records = relationship("Record", back_populates="unit")
+#     # Unit model
+#
+#     incomes = relationship("Income", back_populates="unit")
+#     # In Unit
+#     stockings = relationship("Stocking", back_populates="unit")
+#
+#
+# class Batch(Base):
+#     __tablename__ = "batches"
+#     batchId = Column(String(50), primary_key=True, index=True)
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchName = Column(String(100), nullable=False)
+#     fishtype = Column(String(100), nullable=False)
+#     numberoffishes = Column(String(100), nullable=False)
+#     createdAt = Column(DateTime, default=datetime.utcnow)
+#     updatedAt = Column(DateTime, default=None)
+#     isCompleted = Column(Boolean, default=False)
+#     farmer = relationship("User", back_populates="batches")
+#     records = relationship("Record", back_populates="batch")
+#     # ✅ Add feeds relationship
+#     feeds = relationship("Feed", back_populates="batch")
+#     # Batch model
+#
+#     incomes = relationship("Income", back_populates="batch")   # ✅ matches Income.batch
+#     # In Batch
+#     stockings = relationship("Stocking", back_populates="batch")
+
+#
+# class Record(Base):
+#     __tablename__ = "records"
+#
+#     id = Column(String(50), primary_key=True, index=True)
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchId = Column(String(50), ForeignKey("batches.batchId"))
+#     unitId = Column(String(50), ForeignKey("units.id"))
+#
+#     createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
+#     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+#     unit = relationship("Unit", back_populates="records")
+#     batch = relationship("Batch", back_populates="records")
+#     farmer = relationship("User", back_populates="records")
+#
+#     dailyRecords = relationship("DailyRecord", back_populates="record")
+#     weightSamplings = relationship("WeightSampling", back_populates="record")
+#     gradingAndSortings = relationship("GradingAndSorting", back_populates="record")
+#     harvests = relationship("HarvestForm", back_populates="record")
+#
+# class DailyRecord(Base):
+#     __tablename__ = "daily_records"
+#
+#     id = Column(String(50), primary_key=True, index=True)   # PK UUID
+#     recordId = Column(String(50), ForeignKey("records.id")) # FK to records
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchId = Column(String(50), ForeignKey("batches.batchId"))
+#     unitId = Column(String(50), ForeignKey("units.id"))
+#
+#     date = Column(DateTime, nullable=False)
+#     feedName = Column(String(100), nullable=False)
+#     feedSize = Column(String(50), nullable=False)
+#     feedQuantity = Column(Float, nullable=False)
+#     mortality = Column(Integer, nullable=False)
+#     coins = Column(Integer, default=None)
+#
+#     createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
+#     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+#
+#     # Relationships
+#     record = relationship("Record", back_populates="dailyRecords")
+#
+# class WeightSampling(Base):
+#     __tablename__ = "weight_samplings"
+#
+#     recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchId = Column(String(50), ForeignKey("batches.batchId"))
+#     unitId = Column(String(50), ForeignKey("units.id"))
+#     sampleName = Column(String(100))
+#     date = Column(DateTime, nullable=False)
+#     fishNumbers = Column(Integer, nullable=False)
+#     totalWeight = Column(Float, nullable=False)
+#     completed = Column(Boolean, default=False)
+#     createdAt = Column(DateTime, default=datetime.utcnow)
+#
+#     record = relationship("Record", back_populates="weightSamplings")
+#
+# class Grade(Base):
+#     __tablename__ = "grades"
+#
+#     id = Column(Integer, primary_key=True, autoincrement=True)
+#     gradingAndSortingId = Column(String(50), ForeignKey("grading_and_sortings.recordId"))
+#     destinationBatchId = Column(String(50), nullable=True)
+#     destinationBatchName = Column(String(100), nullable=True)
+#     destinationUnitId = Column(String(50), nullable=False)
+#     destinationUnitName = Column(String(100), nullable=False)
+#     averageFishWeight = Column(Float, nullable=False)
+#     fishTransferred = Column(Integer, nullable=False)
+#
+# class GradingAndSorting(Base):
+#     __tablename__ = "grading_and_sortings"
+#
+#     recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchId = Column(String(50), ForeignKey("batches.batchId"))
+#     unitId = Column(String(50), ForeignKey("units.id"))
+#     gradeWith = Column(String(50))
+#     sampleName = Column(String(100))
+#     date = Column(DateTime, nullable=False)
+#     gradingPondNumber = Column(Integer)
+#     fishNumbers = Column(Integer)
+#     totalWeight = Column(Float)
+#     completed = Column(Boolean, default=False)
+#     createdAt = Column(DateTime, default=datetime.utcnow)
+#
+#     record = relationship("Record", back_populates="gradingAndSortings")
+#     grades = relationship("Grade", backref="gradingAndSorting")
+#
+# class HarvestForm(Base):
+#     __tablename__ = "harvests"
+#
+#     recordId = Column(String(50), ForeignKey("records.id"), primary_key=True)
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchId = Column(String(50), ForeignKey("batches.batchId"))
+#     unitId = Column(String(50), ForeignKey("units.id"))
+#     date = Column(DateTime, nullable=False)
+#     harvestedWeight = Column(Float, nullable=False)
+#     harvestedFish = Column(Integer, nullable=False)
+#     createdAt = Column(DateTime, default=datetime.utcnow)
+#
+#     record = relationship("Record", back_populates="harvests")
+#
+# class Feed(Base):
+#     __tablename__ = "feeds"
+#
+#     id = Column(String(50), primary_key=True, index=True)
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#
+#     batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
+#     unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
+#
+#     feedName = Column(String(100), nullable=False)
+#     feedForm = Column(String(50), nullable=False)
+#     feedSize = Column(String(50), nullable=False)
+#     quantity = Column(Integer, nullable=False)
+#     # unit = Column(String(50), nullable=False)
+#     unitMeasure = Column(String(50), nullable=False)  # ✅ renamed (kg, bags, etc.)
+#     costPerUnit = Column(Float, nullable=False)
+#     totalAmount = Column(Float, nullable=False)
+#     date = Column(DateTime, nullable=False)
+#
+#     createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
+#     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+#
+#     # relationships
+#     farmer = relationship("User", back_populates="feeds")
+#     batch = relationship("Batch", back_populates="feeds")
+#     unit = relationship("Unit", back_populates="feeds")
+#
+#
+# class Income(Base):
+#     __tablename__ = "incomes"
+#
+#     id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
+#     unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
+#     farmId = Column(Integer, ForeignKey("farms.id"), nullable=False)
+#
+#     incomeType    = Column(String(250), nullable=False)
+#     amountEarned= Column(Integer, nullable=False)
+#     quantitySold = Column(Integer, nullable=False)
+#     paymentMethod =  Column(String(250), nullable=False)
+#     incomeDate = Column(DateTime, default=datetime.utcnow)
+#     # Optional link to harvest (future-proof)
+#     harvestId = Column(String(50), ForeignKey("harvests.recordId"), nullable=True)
+#     appliedToPondName = Column(String(100), nullable=True)  # ✅ pond name (unit/pond applied to)
+#     createdAt = Column(DateTime, default=datetime.utcnow)
+#     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+#
+#     # Relationships
+#     # farmer = relationship("User", back_populates="incomes")
+#     # ✅ Relationships
+#
+#     farmer = relationship("User", back_populates="incomes")
+#     farm = relationship("Farm", back_populates="incomes")
+#     batch = relationship("Batch", back_populates="incomes")
+#     unit = relationship("Unit", back_populates="incomes")
+#
+#     # farmer = relationship("User", backref="incomes")
+#     # batch = relationship("Batch", backref="incomes")
+#     # unit = relationship("Unit", backref="incomes")
+#     # harvest = relationship("HarvestForm", backref="incomes", uselist=False)
+#
+#
+# class Stocking(Base):
+#     __tablename__ = "stockings"
+#
+#     id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
+#     farmerId = Column(Integer, ForeignKey("users.id"), nullable=False)
+#     batchId = Column(String(50), ForeignKey("batches.batchId"), nullable=False)
+#     unitId = Column(String(50), ForeignKey("units.id"), nullable=False)
+#     farmId = Column(Integer, ForeignKey("farms.id"), nullable=False)
+#
+#     fishType = Column(String(100), nullable=False)            # e.g., Tilapia
+#     quantityPurchased = Column(Integer, nullable=False)       # total fingerlings stocked
+#     totalAmount = Column(Float, nullable=False)               # purchase cost
+#     date = Column(DateTime, default=datetime.utcnow)          # stocking date
+#
+#     createdAt = Column(DateTime, default=datetime.utcnow)
+#     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+#
+#     # Relationships
+#     farmer = relationship("User", back_populates="stockings")
+#     farm = relationship("Farm", back_populates="stockings")
+#     batch = relationship("Batch", back_populates="stockings")
+#     unit = relationship("Unit", back_populates="stockings")
+
+
+
+# class Product(Base):
+#     __tablename__ = "products"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     title = Column(String(250), nullable=False)
+#     description = Column(String(250), nullable=True)
+#     image = Column(String(250), nullable=True)
+#     price = Column(Float, nullable=False)
+#     category = Column(String(250), nullable=False)
+#     featured = Column(Boolean, default=False , nullable=True)
+#     featureexpiredate = Column(Boolean , default=False, nullable=True)
+#     quantity = Column(Integer, default=0)
+#     # relationships
+#
+#     price_range = relationship("PriceRange", uselist=False,  back_populates="product")
+#     types = relationship("ProductType", back_populates="product", cascade="all, delete-orphan")
+
+# class Category(Base):
+#     __tablename__ = "categories"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     name = Column(String(250), unique=True, nullable=False)
+#
+#     # Relationship back to products
+#     products = relationship("Product", back_populates="category_obj")
+
+
+# class Cart(Base):
+#     __tablename__ = "cart"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+#     type_id = Column(Integer, ForeignKey("product_types.id"), nullable=True)
+#     quantity = Column(Integer, nullable=False)
+#
+#     product = relationship("Product")
+#     selected_type = relationship("ProductType")
+# class Cart(Base):
+#     __tablename__ = "cart"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     product_id = Column(Integer, ForeignKey("products.id"))
+#     quantity = Column(Integer, nullable=False)
+#     product = relationship("Product")
+
+
+
+# class Labs(Base):
+#     __tablename__ = "labs"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     labtesttorun = Column(String(250), nullable=False)
+#     selectspecfictest = Column(String(250), nullable=True)
+#     date = Column(String(250), nullable=False)
+#     username = Column(String(250), nullable=False)
+#     # Order/payment tracking
+#     status = Column(String(50), default="pending")  # pending, in_progress, completed
+#     payment_status = Column(String(50), default="unpaid")  # unpaid, paid, failed
+#     payment_reference = Column(String(250), nullable=True)  # from Paystack
+#     amount = Column(Integer, nullable=False, default=0)  # cost of test
+#     created_at = Column(DateTime, default=datetime.utcnow)
+#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 #
 # class Labs(Base):
@@ -817,36 +1218,6 @@ class TestItem(Base):
 #     user = relationship("User", back_populates="labs")
 
 
-class Labs(Base):
-    __tablename__ = "labs"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    username = Column(String(250), nullable=False)
-    preferred_date = Column(String(250), nullable=False)
-    totalPrice = Column(Float, nullable=False)
-    payment_method = Column(String(50), nullable=True)
-    transaction_reference = Column(String(255), nullable=True)
-    payment_status = Column(String(50), default="pending")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    # 🧩 Relationship to lab tests (categories/tests)
-    tests = relationship("LabTest", back_populates="lab", cascade="all, delete-orphan")
-    # 🧩 Relationship back to User
-    user = relationship("User", back_populates="labs")
-
-
-class LabTest(Base):
-    __tablename__ = "lab_tests"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
-    # ✅ match payload
-    category_title = Column(String(255), nullable=False)  # e.g. "Water Quality Test"
-    test_id = Column(Integer, nullable=False)  # testListAsMap test id
-    test_name = Column(String(255), nullable=False)  # e.g. "pH Level"
-    test_price = Column(Float, nullable=False)
-
-    lab = relationship("Labs", back_populates="tests")
 
 # class LabTest(Base):
 #     __tablename__ = "lab_tests"

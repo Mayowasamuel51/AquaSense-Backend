@@ -1,0 +1,46 @@
+How much fish you produced (yield)
+
+How many survived or died (survival & mortality rates)
+
+How fast they grew (growth rate)
+
+How efficient feeding was (FCR – Feed Conversion Ratio)
+
+How much it cost to produce fish
+
+How much money you made (profit, ROI, etc.)
+
+
+
+what am thinking to do 
+
+Collect raw data (like pond size, number of fish, feed used, cost, harvest weight, etc.).
+
+Do the math using the formulas in that document.
+
+Save and return those calculated results (KPIs) through your API.
+
+
+
+After collecting all this the farmers see this below 
+
+Your survival rate is 92%”
+
+“Your profit this cycle was ₦250,000”
+
+“Your feed efficiency is 1.3”
+
+
+
+
+You’re building a mobile aquaculture management app for farmers, and:
+
+Each farmer (user) can record data offline on their phone — like stocking, feeding, labour, maintenance, income, etc.
+
+Each of those data points (FeedModel, IncomeModel, etc.) is stored locally with a isSynced flag (to mark whether it’s been uploaded to the backend).
+
+When the farmer gets back online, all unsynced data is sent to your backend (MySQL).
+
+You want to make sure this process is safe, efficient, and handles concurrency, so data doesn’t get duplicated or lost.
+
+You’re also planning to compute production performance metrics and profitability KPIs (like yield, survival rate, FCR, ROI, etc.) once the data is synced.

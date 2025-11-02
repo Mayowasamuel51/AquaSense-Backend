@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from passlib.hash import argon2
 from uuid import uuid4
 from ..database  import get_db
-from ..models import User, Farm, Unit, HarvestForm, WeightSampling, Record, Batch, DailyRecord
+from ..models import User, Farm, Unit, Harvest, WeightSampling, UnitRecord, Batch, DailyRecord
 from ..schemas import ( UserOut ,  FarmBase ,  UserCreate,
     UnitCreate, UnitResponse,
     BatchCreate, BatchResponse,

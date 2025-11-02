@@ -9,7 +9,7 @@ from ..models import User, Location
 from ..schemas import UserOut
 # ,UserProfileUpdate , UserProfileResponse)
 from typing import List
-# from ..dep.security import create_tokens
+
 from ..dep.security import create_tokens , get_current_user
 router = APIRouter(prefix="/profileupdate", tags=["profileupdate"])
 
