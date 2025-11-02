@@ -30,22 +30,8 @@ class Wait(Base):
     firstname = Column(String(100), nullable=False)
     email = Column(String(120), nullable=False, index=True)
 
-class Farm(Base):
-    __tablename__ = "farms"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    address = Column(String(255), nullable=True)
-    longitude = Column(String(100), nullable=True)
-    latitude = Column(String(100), nullable=True)
-    city = Column(String(100), nullable=True)
-    state = Column(String(100), nullable=True)
-    farmname = Column(String(255), nullable=True)
-    farmtype = Column(String(255), nullable=True)
-    area = Column(String(100), nullable=True)
-    owner_id = Column(Integer, ForeignKey("users.id") ,  unique=True)
-    # relationship
-    # incomes = relationship("Income", back_populates="farm")
-    incomes = relationship("Income", back_populates="farm")  # ✅
-    stockings = relationship("Stocking", back_populates="farm")
+
+
 
     # incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
 
@@ -75,14 +61,33 @@ class Location(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="location")
 
+class Farm(Base):
+    __tablename__ = "farms"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    address = Column(String(255), nullable=True)
+    longitude = Column(String(100), nullable=True)
+    latitude = Column(String(100), nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    farmname = Column(String(255), nullable=True)
+    farmtype = Column(String(255), nullable=True)
+    area = Column(String(100), nullable=True)
+
+    # ✅ This is the correct place for the owner link
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # ✅ Back relationship to User
+    owner = relationship("User", back_populates="farm")
 
 class User(Base):
     __tablename__ = "users"
+
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False)
     phone = Column(String(50), nullable=True)
     user_cluster_name = Column(String(50), nullable=True)
-    profilepicture = Column(String(255), nullable=True )
+    profilepicture = Column(String(255), nullable=True)
     nin = Column(String(50), nullable=True)
     kyc_status = Column(String(50), default="unverified")
     emailverified = Column(Boolean, default=False)
@@ -90,40 +95,32 @@ class User(Base):
     last_name = Column(String(100), nullable=True)
     gender = Column(String(50), nullable=True)
     coins = Column(Integer, default=0)
-    # ✅ Progress relationships
-    justdata = relationship("JustData", back_populates="user", uselist=False)
     password_hash = Column(String(255), nullable=False)
-    # roles = Column(JSON, default=["user"])  # stored as JSON array in MySQL
-    farm = relationship("Farm", uselist=False, backref="owner")
+
+    # ✅ One user can have many farms
+    farm = relationship("Farm", back_populates="owner", uselist=False)
+    # farms = relationship("Farm", back_populates="owner", cascade="all, delete-orphan")
+
+    # ✅ The rest of your relationships stay untouched
+    justdata = relationship("JustData", back_populates="user", uselist=False)
     workers = relationship("Worker", back_populates="user")
-    # relationship to tokens
     tokens = relationship("VerificationToken", back_populates="user")
-    # ✅ relationships
     video_progress = relationship("UserVideoProgress", backref="user", cascade="all, delete-orphan")
     test_progress = relationship("UserTestProgress", back_populates="user", cascade="all, delete-orphan")
-    # new relationship
     location = relationship("Location", uselist=False, back_populates="user")
-    # ✅ add this only once
-    # incomes = relationship("Income", back_populates="farmer")
     support_tickets = relationship("SupportAgent", back_populates="user", cascade="all, delete-orphan")
-    # Reverse relationship to support tickets
     support_ticket = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
-    # 🧩 Add this line:
-    labs = relationship("Labs", back_populates="user",  cascade="all, delete-orphan")
-    # ✅ Add relationship to VetSupport
+    labs = relationship("Labs", back_populates="user", cascade="all, delete-orphan")
     vetsupports = relationship("VetSupport", back_populates="user", cascade="all, delete-orphan")
     addresses = relationship("DeliveryAddress", back_populates="user", cascade="all, delete-orphan")
-    # ✅ Relationship to Orders
     orders = relationship("Order", back_populates="user")
-    # cluster_id = Column(Integer, ForeignKey("clusters.id"), nullable=True)  // i will fix  this God abeg
-    # cluster = relationship("Cluster", back_populates="farmers")  // and this too
-    # relationships to farm data
     units = relationship("Unit", back_populates="farmer", cascade="all, delete-orphan")
     batches = relationship("Batch", back_populates="farmer", cascade="all, delete-orphan")
     records = relationship("UnitRecord", back_populates="farmer", cascade="all, delete-orphan")
     feeds = relationship("Feed", back_populates="farmer", cascade="all, delete-orphan")
     incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
     stockings = relationship("Stocking", back_populates="farmer", cascade="all, delete-orphan")
+
 
 class SyncBase:
     # client-provided UUID primary key
@@ -149,7 +146,8 @@ class Unit(Base, SyncBase):
     image_file = Column(String(255), nullable=True)
     unit_category = Column(String(80), nullable=True)  # cage / pond
     is_active = Column(Boolean, default=False)
-
+    # ✅ This line is critical
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     # relationships
     farmer = relationship("User", back_populates="units")
     # reverse relationships from other models will reference Unit via pond_id/unit_id
@@ -165,6 +163,8 @@ class Batch(Base, SyncBase):
     fishtype = Column(String(120), nullable=True)
     is_completed = Column(Boolean, default=False)
     number_of_fishes = Column(Integer, default=0)
+    # ✅ This line is critical
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     farmer = relationship("User", back_populates="batches")
 
@@ -186,6 +186,8 @@ class UnitRecord(Base, SyncBase):
     fishtype = Column(String(100), nullable=True)
     stockedon = Column(DateTime, nullable=True)
     totalfishcost = Column(Float, nullable=True)
+    # ✅ Add this line:
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     farmer = relationship("User", back_populates="records")
     batch = relationship("Batch", backref="unit_records")
@@ -207,7 +209,8 @@ class DailyRecord(Base, SyncBase):
     feed_quantity = Column(Float, nullable=False, default=0.0)
     mortality = Column(Integer, default=0)
     coins = Column(Float, nullable=True)
-
+    # ✅ This line is critical
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     unit_record = relationship("UnitRecord", backref="daily_records")
 
@@ -226,7 +229,7 @@ class WeightSampling(Base, SyncBase):
     fish_numbers = Column(Integer, nullable=False)
     total_weight = Column(Float, nullable=False)
     completed = Column(Boolean, default=False)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     unit_record = relationship("UnitRecord", backref="weight_samplings")
 
@@ -247,7 +250,7 @@ class GradingAndSorting(Base, SyncBase):
     fish_numbers = Column(Integer, nullable=True)
     total_weight = Column(Float, nullable=True)
     completed = Column(Boolean, default=False)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     unit_record = relationship("UnitRecord", backref="grading_sortings")
     grades = relationship("Grade", back_populates="grading", cascade="all, delete-orphan")
@@ -289,7 +292,7 @@ class Harvest(Base, SyncBase):
     total_weight = Column(Float, nullable=False, default=0.0)
     price_per_kg = Column(Float, nullable=True)
     total_sales = Column(Float, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     unit_record = relationship("UnitRecord", backref="harvests")
 
@@ -311,7 +314,7 @@ class Income(Base, SyncBase):
     quantity_sold = Column(Integer, nullable=True)
     payment_method = Column(String(80), nullable=True)
     income_date = Column(DateTime, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
 
@@ -328,7 +331,7 @@ class Stocking(Base, SyncBase):
     quantity_purchased = Column(Integer, nullable=False, default=0)
     total_amount = Column(Float, nullable=True)
     date = Column(DateTime, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
 
@@ -350,7 +353,7 @@ class Feed(Base, SyncBase):
     cost_per_unit = Column(Float, nullable=True)
     total_amount = Column(Float, nullable=True)
     date = Column(DateTime, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
     batch = relationship("Batch")
@@ -371,7 +374,7 @@ class Labour(Base, SyncBase):
     payment_method = Column(String(80), nullable=True)
     date = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
 
@@ -391,7 +394,7 @@ class Medication(Base, SyncBase):
     date_paid = Column(DateTime, nullable=True)
     payment_method = Column(String(80), nullable=True)
     notes = Column(Text, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
 
@@ -410,7 +413,7 @@ class Maintenance(Base, SyncBase):
     date_paid = Column(DateTime, nullable=True)
     payment_method = Column(String(80), nullable=True)
     notes = Column(Text, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
 
@@ -429,7 +432,7 @@ class Logistics(Base, SyncBase):
     date_paid = Column(DateTime, nullable=True)
     payment_method = Column(String(80), nullable=True)
     notes = Column(Text, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
 
@@ -448,7 +451,7 @@ class OperationalExpense(Base, SyncBase):
     date_paid = Column(DateTime, nullable=True)
     payment_method = Column(String(80), nullable=True)
     notes = Column(Text, nullable=True)
-
+    farmer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     farmer = relationship("User")
     pond = relationship("Unit")
 
@@ -895,6 +898,61 @@ class AdminOTP(Base):
 
 
 
+
+
+
+#
+# class User(Base):
+#     __tablename__ = "users"
+#     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+#     email = Column(String(255), unique=True, nullable=False)
+#     phone = Column(String(50), nullable=True)
+#     user_cluster_name = Column(String(50), nullable=True)
+#     profilepicture = Column(String(255), nullable=True )
+#     nin = Column(String(50), nullable=True)
+#     kyc_status = Column(String(50), default="unverified")
+#     emailverified = Column(Boolean, default=False)
+#     first_name = Column(String(100), nullable=True)
+#     last_name = Column(String(100), nullable=True)
+#     gender = Column(String(50), nullable=True)
+#     coins = Column(Integer, default=0)
+#     # ✅ Progress relationships
+#     justdata = relationship("JustData", back_populates="user", uselist=False)
+#     password_hash = Column(String(255), nullable=False)
+#     # roles = Column(JSON, default=["user"])  # stored as JSON array in MySQL
+#     # farm = relationship("Farm", uselist=False, backref="owner")
+#     workers = relationship("Worker", back_populates="user")
+#     # relationship to tokens
+#     tokens = relationship("VerificationToken", back_populates="user")
+#     # ✅ relationships
+#     video_progress = relationship("UserVideoProgress", backref="user", cascade="all, delete-orphan")
+#     test_progress = relationship("UserTestProgress", back_populates="user", cascade="all, delete-orphan")
+#     # new relationship
+#     location = relationship("Location", uselist=False, back_populates="user")
+#     # ✅ add this only once
+#     # incomes = relationship("Income", back_populates="farmer")
+#     support_tickets = relationship("SupportAgent", back_populates="user", cascade="all, delete-orphan")
+#     # Reverse relationship to support tickets
+#     support_ticket = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
+#     # 🧩 Add this line:
+#     labs = relationship("Labs", back_populates="user",  cascade="all, delete-orphan")
+#     # ✅ Add relationship to VetSupport
+#     vetsupports = relationship("VetSupport", back_populates="user", cascade="all, delete-orphan")
+#     addresses = relationship("DeliveryAddress", back_populates="user", cascade="all, delete-orphan")
+#     # ✅ Relationship to Orders
+#     orders = relationship("Order", back_populates="user")
+#     owner_id = Column(Integer, ForeignKey("users.id"), unique=True)
+#
+#     owner = relationship("User", back_populates="farms")  # ✅ Matches
+#     # cluster_id = Column(Integer, ForeignKey("clusters.id"), nullable=True)  // i will fix  this God abeg
+#     # cluster = relationship("Cluster", back_populates="farmers")  // and this too
+#     # relationships to farm data
+#     units = relationship("Unit", back_populates="farmer", cascade="all, delete-orphan")
+#     batches = relationship("Batch", back_populates="farmer", cascade="all, delete-orphan")
+#     records = relationship("UnitRecord", back_populates="farmer", cascade="all, delete-orphan")
+#     feeds = relationship("Feed", back_populates="farmer", cascade="all, delete-orphan")
+#     incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
+#     stockings = relationship("Stocking", back_populates="farmer", cascade="all, delete-orphan")
 
 
 
