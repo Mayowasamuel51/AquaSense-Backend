@@ -1,11 +1,9 @@
 import os
-
 from fastapi import FastAPI,  Request
 from fastapi.middleware.cors import CORSMiddleware
 # from starlette.responses import JSONResponse
 from fastapi.responses import JSONResponse
 from starlette.responses import FileResponse
-
 from .config import settings
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -36,7 +34,6 @@ import logging
 import traceback
 # from apscheduler.schedulers.background import BackgroundScheduler
 # from mangum import Mangum
-
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",")]
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Platform API", version="0.1.0")

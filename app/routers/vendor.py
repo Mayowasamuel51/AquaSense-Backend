@@ -38,7 +38,7 @@ class VendorInfo(BaseModel):
     phone: Optional[str] = None
     profilepicture: Optional[str] = None
     gender: Optional[str] = None
-    nin: Optional[str] = None
+    # nin: Optional[str] = None
     kyc_status: Optional[str] = None
     emailverified: Optional[bool] = None
     address: Optional[str] = None
@@ -64,7 +64,22 @@ def register_vendor(body: VendorRegister, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = argon2.hash(body.password)
-    vendor = Vendor(email=body.email, password_hash=hashed_pw)
+    vendor = Vendor(
+        email=body.email,
+        password_hash=hashed_pw,
+        first_name=body.first_name,
+        last_name=body.last_name,
+        phone=body.phone,
+        profilepicture=body.profilepicture,
+        gender=body.gender,
+        # nin=body.nin,
+        address=body.address,
+        city=body.city,
+        state=body.state,
+        area=body.area,
+        latitude=body.latitude,
+        longitude=body.longitude,
+    )
     db.add(vendor)
     db.commit()
     db.refresh(vendor)

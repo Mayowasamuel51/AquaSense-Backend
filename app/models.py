@@ -31,8 +31,6 @@ class Wait(Base):
     email = Column(String(120), nullable=False, index=True)
 
 
-
-
     # incomes = relationship("Income", back_populates="farmer", cascade="all, delete-orphan")
 
     # links to User
@@ -73,10 +71,8 @@ class Farm(Base):
     farmname = Column(String(255), nullable=True)
     farmtype = Column(String(255), nullable=True)
     area = Column(String(100), nullable=True)
-
     # ✅ This is the correct place for the owner link
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
     # ✅ Back relationship to User
     owner = relationship("User", back_populates="farm")
 
