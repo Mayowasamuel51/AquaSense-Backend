@@ -586,20 +586,35 @@ class VendorRegister(BaseModel):
 class VendorResponse(BaseModel):
     id: int
     email: EmailStr
-    first_name:str
+    first_name: Optional[str] = None
     last_name: Optional[str] = None
-    phone: str
+    phone: Optional[str] = None
     profilepicture: Optional[str] = None
-    gender: str
+    gender: Optional[str] = None
     nin: Optional[str] = None
     kyc_status: Optional[str] = None
     emailverified: Optional[bool] = None
     address: Optional[str] = None
     city: Optional[str] = None
-    state: str
+    state: Optional[str] = None
     area: Optional[str] = None
     latitude: Optional[str] = None
     longitude: Optional[str] = None
+    # first_name:str
+    # last_name: Optional[str] = None
+    # phone: str
+    # profilepicture: Optional[str] = None
+    # gender: str
+    # nin: Optional[str] = None
+    # kyc_status: Optional[str] = None
+    # emailverified: Optional[bool] = None
+    # address: Optional[str] = None
+    # city: Optional[str] = None
+    # state: str
+    # area: Optional[str] = None
+    # latitude: Optional[str] = None
+    # longitude: Optional[str] = None
+
 
 
     class Config:

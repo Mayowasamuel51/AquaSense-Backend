@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 import os, secrets, string
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -7,8 +9,9 @@ from passlib.hash import argon2
 import resend
 
 from ..database import get_db
-from ..models import Admin, AdminOTP
+from ..models import Admin, AdminOTP, User, Vendor
 from ..dep.security import create_admin_tokens, get_current_admin  # ✅ Updated imports
+from ..schemas import VendorResponse
 
 router = APIRouter(prefix="/admin", tags=["Admin Auth"])
 
@@ -223,3 +226,14 @@ def admin_verify_otp(data: VerifyOTP, db: Session = Depends(get_db)):
 def admin_me(current_admin: Admin = Depends(get_current_admin)):
     """Return current authenticated admin info."""
     return current_admin
+
+
+class VendorMainListin(BaseModel):
+    message:str
+    data:List[VendorResponse]
+
+
+@router.get("/allvendors", response_model=VendorMainListin )
+def getUser(db: Session = Depends(get_db)):
+    vendors  = db.query(Vendor).all()
+    return {"message":"showing all farmers", "data": vendors}
